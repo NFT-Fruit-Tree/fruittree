@@ -4,6 +4,7 @@ pragma solidity ^0.8.4;
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { ERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Counters } from "@openzeppelin/contracts/utils/Counters.sol";
 import { Land } from "./Land.sol";
 import { Fruit } from "./Fruit.sol";
@@ -23,13 +24,16 @@ contract Seed is ERC721, ERC721Enumerable {
     using Counters for Counters.Counter;
 
     Counters.Counter private _tokenIdCounter;
+
     uint8 constant mintLimitPerBlock = 8;
+    uint8 constant massPerStage = 50;
+    uint8 constant minimumAdultMass = uint8(uint8(TreeState.ADULT) * massPerStage); // mass needed to become adult
+    uint8 constant wholeFruitMass = 10; // can harvest 1 FRUIT for every 10 mass
+    int16 constant driedDeath = -500; // level at which the tree will die from the lack of water
     // TODO: What's the real value of a seed ?
     uint256 constant seedPrice = 10 ** 17;
     // TODO: Ask tomo for the real amount 
     uint256 constant fertilizerAmount = 10 ** 17;
-    uint256 constant massPerStage = 10;
-    uint256 constant wholeFruitMass = 10; // can harvest 1 FRUIT for every 10 mass
 
     // For dna generation
     uint8 constant dnaBits = 32;
@@ -94,10 +98,13 @@ contract Seed is ERC721, ERC721Enumerable {
          */
         uint32 dna;
         // Tree traits
-        uint256 lastFertilized; // timestamp. implies that fertilizedAmount = 100 @ lastFertilized
-        uint256 lastWatered; // timestamp. implies that waterLevel = 100 @ lastWatered
-        uint256 lastHarvested; // timestamp.
-        uint256 plantedAt; // timestamp. When the seed was planted
+        uint256 adultAt; // timestamp when the tree became adult
+        uint256 lastSnapshotedAt; // timestamp of the last state snapshot
+        uint256 lastFertilizedAt; // timestamp. implies that fertilizedAmount = 100 @ lastFertilized
+        uint256 lastWateredAt; // timestamp. implies that waterLevel = 100 @ lastWatered
+        uint256 lastHarvestedAt; // timestamp.
+        uint256 lastMass; // last calculated tree mass at the last watering
+        uint256 lastFruitMass; // last unharvested fruits mass at the last fertilizing
         uint256 landId; // id of the tree's land
     }
 
@@ -123,6 +130,217 @@ contract Seed is ERC721, ERC721Enumerable {
         fertilizer = ERC20(_fertilizerAddress);
     }
 
+    /* --- Player actions functions --- */
+
+    /**
+     * Buy a new seed with pseudo random traits for some fixed amount of fruit tokens.
+     * @dev Mint a new Seed token. See {ERC721-_safeMint}
+     */
+    function buy() external {
+        // Check if the limit to buy seed per block is hit
+        if (mintedTokensPerBlock[block.number] >= mintLimitPerBlock) revert MintingForbiddenError();
+        // Transfer a fixed amount of fruit from the sender to this contract
+        if (!fruit.transferFrom(msg.sender, address(this), seedPrice)) revert TransferError(address(fruit), msg.sender, address(this), seedPrice);
+        // Generate the dna of the seed.
+        // Extract up to 8 dna for a blockhash (256 / 32 = 8)
+        // FIXME: 🚨 Only pseudo random
+        bytes32 hash = blockhash(block.number - 1);
+        bytes4 dna = bytes4(hash << mintedTokensPerBlock[block.number] * 32);
+        // Track the number of minted seeds this block
+        mintedTokensPerBlock[block.number]++;
+        // Mint the seed token. Unsafe because of an external call
+        uint256 id = _tokenIdCounter.current();
+        _safeMint(msg.sender, id);
+        _tokenIdCounter.increment();
+        // Initialise the seed's traits
+        // TODO: calculate the different traits using the species trait values and its dna
+        treeDatas[id].dna = uint32(dna);
+    }
+
+    /**
+     * Plant one of `your` `seeds` into one of `your` `lands`.
+     * @dev Create a soft link from a Seed token to a Land token. The Seed token remains controlled by its owner, unlike a staking action.
+     */
+    function plant(uint256 _seedId, uint256 _landId) external {
+        // Check if the token exists and if the sender owns the seed AND the land
+        if (ownerOf(_seedId) != msg.sender || land.ownerOf(_landId) != msg.sender) revert UnauthorizedError();
+        // Check if the seed is not already planted
+        if (treeDatas[_seedId].landId != 0) revert AlreadyPlantedError();
+        // Initialize the tree data
+        _initializeState(_seedId, _landId);
+        // Event
+        emit Planted(_seedId, _landId);
+    }
+
+    /**
+     * Fertilize one of `your` `alive` `adult` `trees` with some token so it can produce fruits.
+     * @dev It is somewhat similar to staking some token for an unlimited time.
+     */
+    function fertilize(uint256 _seedId) external {
+        // Check if the token exists and if the sender owns the tree
+        if (ownerOf(_seedId) != msg.sender) revert UnauthorizedError();
+        // Check if it is a adult tree
+        TreeState treeState = state(_seedId);
+        if (treeState != TreeState.ADULT) revert InvalidStateError(treeState);
+        // Transfer the amount of fertilizer from the sender to this contract
+        if (!fertilizer.transferFrom(msg.sender, address(this), fertilizerAmount)) revert TransferError(address(fertilizer), msg.sender, address(this), fertilizerAmount);
+        // Update the tree state
+        _updateState(_seedId);
+        treeDatas[_seedId].lastFertilizedAt = block.timestamp;
+        // Event
+        emit Fertilized(_seedId, fertilizerAmount);
+    }
+
+    /**
+     * Water one of `your` `alive` `trees` to maintain it `alive`. A dead tree cannot grow or produce fruit anymore.
+     */
+    function water(uint256 _seedId) external {
+        // Check if the token exists and if the sender owns the tree
+        if (ownerOf(_seedId) != msg.sender) revert UnauthorizedError();
+        // Check if it is planted and not dead
+        TreeState treeState = state(_seedId);
+        if (treeDatas[_seedId].landId == 0 || treeState == TreeState.DEAD) revert InvalidStateError(treeState);
+        // Update the tree state
+        _updateState(_seedId);
+        treeDatas[_seedId].lastWateredAt = block.timestamp;
+        // Event
+        emit Watered(_seedId);
+    }
+
+    /**
+     * Harvest the produced `fruits` of one of `your` `alive` `adult` `trees`.
+     * @dev Withdraw some fruits tokens to your address
+     */
+    function harvest(uint256 _seedId) external {
+        // Check if the token exists and if the sender owns the tree
+        if (ownerOf(_seedId) != msg.sender) revert UnauthorizedError();
+        // Check if it is an adult tree
+        if (state(_seedId) != TreeState.ADULT) revert InvalidStateError(state(_seedId));
+        // Update the tree data
+        _updateState(_seedId);
+        // Calculate the unharvested fruit amount
+        uint256 _unharvestedFruits = treeDatas[_seedId].lastFruitMass / wholeFruitMass;
+        // Reset the fruit mass
+        treeDatas[_seedId].lastHarvestedAt = block.timestamp;
+        treeDatas[_seedId].lastFruitMass = 0;
+        // Transfer the amount of unharvested fruits from this contract to the sender
+        if (!fruit.transferFrom(address(this), msg.sender, _unharvestedFruits)) revert TransferError(address(fruit), address(this), msg.sender, _unharvestedFruits);
+        // Event
+        emit Harvested(_seedId, _unharvestedFruits);
+    }
+
+    /**
+     * Move one of `your` `alive` `trees` to another one of `your` `land`.
+     * @dev Similar to {plant}
+     */
+    function move(uint256 _seedId, uint256 _newLandId) external {
+        // Check if the token exists, if the sender owns the seed. Same thing for the new land
+        if (ownerOf(_seedId) != msg.sender || land.ownerOf(_newLandId) != msg.sender) revert UnauthorizedError();
+        // Check if it is planted and not dead
+        TreeState treeState = state(_seedId);
+        if (treeDatas[_seedId].landId == 0 || treeState == TreeState.DEAD) revert InvalidStateError(treeState);
+        // Update the tree state
+        _updateState(_seedId);
+        treeDatas[_seedId].landId = _newLandId;
+        // Event
+        emit Planted(_seedId, _newLandId);
+    }
+
+    /**
+     * Burn one of `your` `trees` and empty the corresponding `land`.
+     * @dev See {ERC721-_burn}
+     */
+    function burn(uint256 _seedId) external {
+        // Check if the token exists and if the sender owns the seed
+        if (ownerOf(_seedId) != msg.sender) revert UnauthorizedError();
+        // TODO: Should we check the tree state ? 
+        delete treeDatas[_seedId];
+        _burn(_seedId);
+    }
+
+    /* --- Seed state functions --- */
+
+    // Calculate and save the seed's new state
+    function _updateState(uint256 _seedId) internal {
+        TreeData storage _seed = treeDatas[_seedId];
+        // Calculate the new tree mass
+        uint256 _treeMass = _mass(_seed);
+        // Check if the tree is adult
+        if (_treeMass >= minimumAdultMass) {
+            // For the first time since the tree became adult only
+            if (_seed.adultAt == 0) {
+                // Calculate and save when the tree becomes adult
+                _seed.adultAt = _seed.lastSnapshotedAt + (minimumAdultMass - _seed.lastMass) / _growthFactor(_seed) * 3600;
+            }
+
+            // Calculate the fruit mass
+            _seed.lastFruitMass = _fruitMass(_seed);
+        }
+
+        // Save the new mass only after the others state updates
+        _seed.lastMass = _treeMass;
+        _seed.lastSnapshotedAt = block.timestamp;
+    }
+
+    // Initialize the seed's state
+    function _initializeState(uint256 _seedId, uint256 _landId) internal {
+        TreeData storage _seed = treeDatas[_seedId];
+        // Required for state calculations
+        _seed.lastSnapshotedAt = block.timestamp;
+        // The tree start to grow immediatly
+        _seed.lastWateredAt = block.timestamp;
+        _seed.landId = _landId;
+    }
+
+    /// Calculate the seed's state
+    function state(uint256 _seedId) public view returns (TreeState) {
+        // Check if the seed is planted, if it has a land
+        if (treeDatas[_seedId].landId == 0) return TreeState.SEED;
+        // Check if the tree is dead
+        int256 _waterLevel = waterLevel(_seedId);
+        if (_waterLevel <= driedDeath) return TreeState.DEAD;
+        // Calculate the tree's mass
+        uint256 _treeMass = _mass(treeDatas[_seedId]);
+        // Calculate the tree's stage
+        uint256 _stage = _treeMass / massPerStage;
+        if (_stage >= uint8(TreeState.ADULT)) return TreeState.ADULT;
+        return TreeState(_stage);
+    }
+
+    // Calculate the tree's mass
+    function _mass(TreeData storage _seed) internal view returns (uint256) {
+        // Calculate the time when the tree runs of water
+        uint256 _hydratedTil = _seed.lastWateredAt + 100 / _waterUseFactor(_seed) * 3600;
+        // Did the tree ran out of water ?
+        uint256 _hydratedTilNow = Math.min(block.timestamp, _hydratedTil);
+        // Calculate the new tree mass from the previously calculated mass and calculated the new one
+        return _seed.lastMass + _growthFactor(_seed) * (_hydratedTilNow - _seed.lastSnapshotedAt) / 3600;
+    }
+
+    /// Calculate the tree's water level
+    function waterLevel(uint256 _seedId) public view returns (int256) {
+        uint8 _treeWaterUseFactor = waterUseFactor(_seedId);
+        return int256(100 - _treeWaterUseFactor * (block.timestamp - treeDatas[_seedId].lastWateredAt));
+    }
+
+    // Calculate the tree's fruit mass
+    function _fruitMass(TreeData storage _seed) internal view returns (uint256) {
+        // Calculate the time when the tree will run out of fertilizer
+        uint256 _fertilizedTil = _seed.lastFertilizedAt + fertilizerAmount / _fertilizerUseFactor(_seed);
+        // Did the tree ran out of fertilizer before now ?
+        uint256 _fertilizedTilNow = Math.min(block.timestamp, _fertilizedTil);
+        // Calculate the fruit mass by adding the previously unharvested fruits and calculating the newly produced mass
+        return _seed.lastFruitMass + _fruitGrowthFactor(_seed) * (_fertilizedTilNow - _seed.lastSnapshotedAt) / 3600;
+    }
+
+    function unharvestedFruitCount(uint256 _seedId) public view returns (uint256) {
+        // Calculate the fruit mass
+        uint256 _treeFruitMass = _fruitMass(treeDatas[_seedId]);
+        return _treeFruitMass / wholeFruitMass;
+    }
+
+    /* --- Seed trait functions --- */
+
     /**
      * @dev Extract a trait value from the seed's dna
      * @param lastBitPosition clears the right bits of the seed
@@ -136,29 +354,47 @@ contract Seed is ERC721, ERC721Enumerable {
         return uint8(_dna >> lastBitPosition) & bitsMask;
     } 
 
+    /// Calculate the tree's growth factor
+    function growthFactor(uint256 _seedId) public view returns (uint8) {
+        return _growthFactor(treeDatas[_seedId]);
+    }
+
+    function _growthFactor(TreeData storage _seed) internal view returns (uint8) {
+        // TODO: use the land with the seed trait instead
+        return _traitFromDNA(_seed.dna, _treeGrowthFactorLastBitPosition, _treeGrowthFactorMask);
+    }
+
+    /// Calculate the tree's water use factor
+    function waterUseFactor(uint256 _seedId) public view returns (uint8) {
+        return _waterUseFactor(treeDatas[_seedId]);
+    }
+
+    function _waterUseFactor(TreeData storage _seed) internal view returns (uint8) {
+        return _traitFromDNA(_seed.dna, _treeWaterUseFactorLastBitPosition, _treeWaterUseFactorMask);
+    }
+
+    /// Calculate the tree's fertilizer use factor
+    function fertilizerUseFactor(uint256 _seedId) public view returns (uint8) {
+        return _fertilizerUseFactor(treeDatas[_seedId]);
+    }
+
+    function _fertilizerUseFactor(TreeData storage _seed) internal view returns (uint8) {
+        return _traitFromDNA(_seed.dna, _treeFertilizerUseFactorLastBitPosition, _treeFertilizerUseFactorMask);
+    }
+
+    /// Calculate the tree's fruit growth factor
+    function fruitGrowthFactor(uint256 _seedId) public view returns (uint8) {
+        return _fruitGrowthFactor(treeDatas[_seedId]);
+    }
+
+    function _fruitGrowthFactor(TreeData storage _seed) internal view returns (uint8) {
+        return _traitFromDNA(_seed.dna, _fruitGrowthFactorLastBitPosition, _fruitGrowthFactorMask);
+    }
+
+    /*
     /// Get the species of a seed from its DNA
     function species(uint32 _dna) public pure returns (uint8) {
         return _traitFromDNA(_dna, _speciesLastBitPosition, _speciesMask);
-    }
-
-    /// Get the tree growth factor of a seed from its DNA
-    function treeGrowthFactor(uint32 _dna) public pure returns (uint8) {
-        return _traitFromDNA(_dna, _treeGrowthFactorLastBitPosition, _treeGrowthFactorMask);
-    }
-
-    /// Get the tree water use factor of a seed from its DNA
-    function treeWaterUseFactor(uint32 _dna) public pure returns (uint8) {
-        return _traitFromDNA(_dna, _treeWaterUseFactorLastBitPosition, _treeWaterUseFactorMask);
-    }
-
-    /// Get the tree fertilizer use factor of a seed from its DNA
-    function treeFertilizerUseFactor(uint32 _dna) public pure returns (uint8) {
-        return _traitFromDNA(_dna, _treeFertilizerUseFactorLastBitPosition, _treeFertilizerUseFactorMask);
-    }
-
-    /// Get the fruit growth factor of a seed from its DNA
-    function fruitGrowthFactor(uint32 _dna) public pure returns (uint8) {
-        return _traitFromDNA(_dna, _fruitGrowthFactorLastBitPosition, _fruitGrowthFactorMask);
     }
 
     /// Get the longevity of a seed from its DNA
@@ -185,186 +421,9 @@ contract Seed is ERC721, ERC721Enumerable {
     function extraCosmetic(uint32 _dna) public pure returns (uint8) {
         return _traitFromDNA(_dna, _extraCosmeticLastBitPosition, _extraCosmeticMask);
     }
+    */
 
-    /// Calculate the tree's growth rate
-    function growthRate(uint256 _seedId) public view returns (uint8) {
-        // TODO: use the land with the seed trait instead
-        return treeGrowthFactor(treeDatas[_seedId].dna);
-    }
-
-    /// Calculate the tree's fertilizer use rate
-    function fertilizerUseRate(uint256 _seedId) public view returns (uint8) {
-        return treeFertilizerUseFactor(treeDatas[_seedId].dna);
-    }
-
-    /// Calculate the tree's mass
-    function mass(uint256 _seedId) public view returns (uint256) {
-        return growthRate(_seedId) * (block.timestamp - treeDatas[_seedId].plantedAt) / 3600;
-    }
-
-    /// Calculate the tree's water level
-    function waterLevel(uint256 _treeId) public view returns (uint256) {
-        uint8 waterUseFactor = treeWaterUseFactor(treeDatas[_treeId].dna);
-        int256 _waterLevel = int256(100 - waterUseFactor * (block.timestamp - treeDatas[_treeId].lastWatered));
-        return _waterLevel > 0 ? uint256(_waterLevel) : 0;
-    }
-
-    /// Calculate the seed's state
-    function state(uint256 _seedId) public view returns (TreeState) {
-        // Check if the seed is planted
-        if (treeDatas[_seedId].plantedAt == 0) return TreeState.SEED;
-        // Check if the tree is dead
-        uint256 _waterLevel = waterLevel(_seedId);
-        if (_waterLevel == 0) return TreeState.DEAD;
-        // Calculate the tree's mass
-        uint256 _mass = mass(_seedId);
-        // Calculate the tree's stage
-        uint256 _stage = _mass / massPerStage;
-        if (_stage > uint8(TreeState.ADULT)) return TreeState.ADULT;
-        return TreeState(_stage);
-    }
-
-    /// Calculate the fruit growth rate of a tree
-    function fruitGrowthRate(uint256 _seedId) public view returns (uint8) {
-        return fruitGrowthFactor(treeDatas[_seedId].dna);
-    }
-
-    /// Calculate the tree's fruit mass
-    function fruitMass(uint256 _seedId) public view returns (uint256) {
-        uint256 fertilizedTil = treeDatas[_seedId].lastFertilized + fertilizerAmount / fertilizerUseRate(_seedId);
-        return block.timestamp < fertilizedTil
-            ? (block.timestamp - treeDatas[_seedId].lastHarvested) / 3600 * fruitGrowthRate(_seedId)
-            : (fertilizedTil - treeDatas[_seedId].lastHarvested) / 3600 * fruitGrowthRate(_seedId);
-    }
-
-    function unharvestedFruitCount(uint256 _seedId) public view returns (uint256) {
-        // Calculate the fruit mass
-        uint256 _fruitMass = fruitMass(_seedId);
-        return _fruitMass / wholeFruitMass;
-    }
-
-    /**
-     * Buy a new seed with pseudo random traits for some fixed amount of fruit tokens.
-     * @dev Mint a new Seed token. See {ERC721-_safeMint}
-     */
-    function buy() external {
-        // Check if the limit to buy seed per block is hit
-        if (mintedTokensPerBlock[block.number] >= mintLimitPerBlock) revert MintingForbiddenError();
-        // Transfer a fixed amount of fruit from the sender to this contract
-        if (!fruit.transferFrom(msg.sender, address(this), seedPrice)) revert TransferError(address(fruit), msg.sender, address(this), seedPrice);
-        // Generate the dna of the seed.
-        // Extract up to 8 dna for a blockhash (256 / 32 = 8)
-        // FIXME: 🚨 Only pseudo random
-        bytes32 hash = blockhash(block.number - 1);
-        bytes4 dna = bytes4(hash << mintedTokensPerBlock[block.number] * 32);
-        // Track the number of minted seeds this block
-        mintedTokensPerBlock[block.number]++;
-        // Mint the seed token. Unsafe because of an external call
-        uint256 id = _tokenIdCounter.current();
-        _safeMint(msg.sender, id);
-        _tokenIdCounter.increment();
-        // Initialise its data
-        // TODO: calculate the different traits using the species trait values and its dna
-        treeDatas[id].dna = uint32(dna);
-    }
-
-    /**
-     * Plant one of `your` `seeds` into one of `your` `lands`. It will consume some of your fertilizer.
-     * @dev Create a soft link from a Seed token to a Land token. The Seed token remains controlled by its owner, unlike a staking action.
-     */
-    function plant(uint256 _seedId, uint256 _landId) external {
-        // Check if the token exists and if the sender owns the seed AND the land
-        if (ownerOf(_seedId) != msg.sender || land.ownerOf(_landId) != msg.sender) revert UnauthorizedError();
-        // Check if the seed is not already planted
-        if (treeDatas[_seedId].landId != 0) revert AlreadyPlantedError();
-        // Transfer the amount of fertilizer from the sender to this contract
-        // TODO: Replace by the real fertilizer amount
-        if (!fertilizer.transferFrom(msg.sender, address(this), fertilizerAmount)) revert TransferError(address(fertilizer), msg.sender, address(this), fertilizerAmount);
-        // Initialize the tree data
-        treeDatas[_seedId].plantedAt = block.timestamp;
-        treeDatas[_seedId].landId = _landId;
-        treeDatas[_seedId].lastFertilized = block.timestamp;
-        treeDatas[_seedId].lastWatered = block.timestamp;
-        // Event
-        emit Planted(_seedId, _landId);
-    }
-
-    /**
-     * Fertilize one of `your` `alive` trees with some token so it can produce fruits.
-     * @dev It is somewhat similar to staking some token for an unlimited time.
-     */
-    function fertilize(uint256 _treeId) external {
-        // Check if the token exists and if the sender owns the tree
-        if (ownerOf(_treeId) != msg.sender) revert UnauthorizedError();
-        // Transfer the amount of fertilizer from the sender to this contract
-        if (!fertilizer.transferFrom(msg.sender, address(this), fertilizerAmount)) revert TransferError(address(fertilizer), msg.sender, address(this), fertilizerAmount);
-        // Update the tree state
-        treeDatas[_treeId].lastFertilized = block.timestamp;
-        // Event
-        emit Fertilized(_treeId, fertilizerAmount);
-    }
-
-    /**
-     * Water one of `your` `alive` `trees` to maintain it `alive`. A dead tree cannot grow or produce fruit anymore.
-     */
-    function water(uint256 _treeId) external {
-        // Check if the token exists and if the sender owns the tree
-        if (ownerOf(_treeId) != msg.sender) revert UnauthorizedError();
-        // Check if it is not a seed or dead
-        TreeState treeState = state(_treeId);
-        if (treeState == TreeState.SEED || treeState == TreeState.DEAD) revert InvalidStateError(treeState);
-        // Update the tree state
-        treeDatas[_treeId].lastWatered = block.timestamp;
-        // Event
-        emit Watered(_treeId);
-    }
-
-    /**
-     * Harvest the produced `fruits` of one of `your` fully grown `alive` `trees`.
-     * @dev Withdraw some fruits tokens to your address
-     */
-    function harvest(uint256 _treeId) external {
-        // Check if the token exists and if the sender owns the tree
-        if (ownerOf(_treeId) != msg.sender) revert UnauthorizedError();
-        // Check if it is an adult tree
-        if (state(_treeId) != TreeState.ADULT) revert InvalidStateError(state(_treeId));
-        // Calculate the unharvested fruit amount
-        uint256 _unharvestedFruits = unharvestedFruitCount(_treeId);
-        // Update the tree data
-        treeDatas[_treeId].lastHarvested = block.timestamp;
-        // Transfer the amount of unharvested fruits from this contract to the sender
-        if (!fruit.transferFrom(address(this), msg.sender, _unharvestedFruits)) revert TransferError(address(fruit), address(this), msg.sender, _unharvestedFruits);
-        // Event
-        emit Harvested(_treeId, _unharvestedFruits);
-    }
-
-    /**
-     * Move one of `your` `alive` `trees` to another one of `your` `land`.
-     * @dev Similar to {plant}
-     */
-    function move(uint256 _treeId, uint256 _newLandId) external {
-        // Check if the token exists, if the sender owns the seed. Same thing for the new land
-        if (ownerOf(_treeId) != msg.sender || land.ownerOf(_newLandId) != msg.sender) revert UnauthorizedError();
-        // Check if it is not a seed or dead
-        TreeState treeState = state(_treeId);
-        if (treeState == TreeState.SEED || treeState == TreeState.DEAD) revert InvalidStateError(treeState);
-        // Update the tree state
-        treeDatas[_treeId].landId = _newLandId;
-        // Event
-        emit Planted(_treeId, _newLandId);
-    }
-
-    /**
-     * Burn one of `your` `trees` and empty the corresponding `land`.
-     * @dev See {ERC721-_burn}
-     */
-    function burn(uint256 _treeId) external {
-        // Check if the token exists and if the sender owns the seed
-        if (ownerOf(_treeId) != msg.sender) revert UnauthorizedError();
-        // TODO: Should we check the tree state ? 
-        delete treeDatas[_treeId];
-        _burn(_treeId);
-    }
+    /* --- Other functions --- */
 
     // The following functions are overrides required by Solidity.
 
