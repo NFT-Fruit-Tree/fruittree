@@ -1,7 +1,7 @@
 import WalletConnectProvider from "@walletconnect/web3-provider";
 //import Torus from "@toruslabs/torus-embed"
 import WalletLink from "walletlink";
-import { Alert, Button, Col, Menu, Row } from "antd";
+import { Alert, Button, Col, Menu, Row, Divider} from "antd";
 import "antd/dist/antd.css";
 import React, { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Link, Route, Switch } from "react-router-dom";
@@ -457,7 +457,7 @@ function App(props) {
               }}
               to="/"
             >
-              Seed
+              Debug
             </Link>
           </Menu.Item>
           <Menu.Item key="/hints">
@@ -512,6 +512,33 @@ function App(props) {
 
             <Contract
               name="Seed"
+              signer={userSigner}
+              provider={localProvider}
+              address={address}
+              blockExplorer={blockExplorer}
+              contractConfig={contractConfig}
+            />
+            <Divider />
+            <Contract
+              name="Land"
+              signer={userSigner}
+              provider={localProvider}
+              address={address}
+              blockExplorer={blockExplorer}
+              contractConfig={contractConfig}
+            />
+            <Divider />
+            <Contract
+              name="Fruit"
+              signer={userSigner}
+              provider={localProvider}
+              address={address}
+              blockExplorer={blockExplorer}
+              contractConfig={contractConfig}
+            />
+            <Divider />
+            <Contract
+              name="Fertilizer"
               signer={userSigner}
               provider={localProvider}
               address={address}
