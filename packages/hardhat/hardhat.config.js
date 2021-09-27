@@ -155,7 +155,6 @@ module.exports = {
         mnemonic: mnemonic(),
       },
     },    
-
     matic: {
       url: "https://rpc-mainnet.maticvigil.com/",
       gasPrice: 1000000000,
