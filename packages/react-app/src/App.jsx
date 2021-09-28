@@ -25,7 +25,7 @@ import {
   useExchangeEthPrice,
 } from "eth-hooks/dapps/dex";
 // import Hints from "./Hints";
-import { ExampleUI, Hints, Subgraph } from "./views";
+import { TreeUI, ExampleUI, Hints, Subgraph } from "./views";
 
 import { useContractConfig } from "./hooks"
 import Portis from "@portis/web3";
@@ -470,6 +470,16 @@ function App(props) {
               Hints
             </Link>
           </Menu.Item>
+          <Menu.Item key="/treeui">
+            <Link
+              onClick={() => {
+                setRoute("/treeui");
+              }}
+              to="/treeui"
+            >
+              TreeUI
+            </Link>
+          </Menu.Item>
           <Menu.Item key="/exampleui">
             <Link
               onClick={() => {
@@ -552,6 +562,21 @@ function App(props) {
               yourLocalBalance={yourLocalBalance}
               mainnetProvider={mainnetProvider}
               price={price}
+            />
+          </Route>
+          <Route path="/treeui">
+            <TreeUI
+              address={address}
+              userSigner={userSigner}
+              mainnetProvider={mainnetProvider}
+              localProvider={localProvider}
+              yourLocalBalance={yourLocalBalance}
+              price={price}
+              tx={tx}
+              writeContracts={writeContracts}
+              readContracts={readContracts}
+              purpose={purpose}
+              setPurposeEvents={setPurposeEvents}
             />
           </Route>
           <Route path="/exampleui">

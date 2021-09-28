@@ -5,3 +5,36 @@ body {
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
+
+.gnd {
+  display: inline-block;
+  margin: -5px -5px 0 0;
+  padding: 0 0 0 0;
+  background-image: url('./terrain/terrain.png');
+  background-repeat: no-repeat;
+  width: 96px;
+}
+.gnd-tilled-in-grass {
+  height: 96px;
+  background-position: -576px -256px;
+}
+.gnd-dirt {
+  height: 32px;
+  background-position: 0 -160px;
+}
+.gnd-tilled {
+  height: 32px;
+  width: 64px;
+  background-position: -608px -352px;
+}
+.gnd-grass-in-tilled {
+  height: 64px;
+  width: 64px;
+  background-position: -608px -192px;
+}
+.gnd-grass {
+  height: 32px;
+  width: 64px;
+  background-position: -32px -352px;
+}
+
