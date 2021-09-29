@@ -7,6 +7,9 @@ import { Address, Balance } from "../components";
 // const fruitTreePng = require('../lpc-fruit-trees/fruit-trees.png');
 import fruitTreePng from "../lpc-fruit-trees/fruit-trees.png";
 import NavBar from "../components/treeui/NavBar";
+import SidePanel from "../components/treeui/SidePanel";
+import TreeMap from "../components/treeui/TreeMap";
+import ButtonBar from "../components/treeui/ButtonBar";
 
 export default function TreeUI({
   purpose,
@@ -23,6 +26,17 @@ export default function TreeUI({
   return (
     <>
       <NavBar />
+      <div className="grid grid-cols-4 grid-rows-2 h-full">
+        <div className="col-span-1 row-span-2 h-full">
+          <SidePanel />
+        </div>
+        <div className="col-span-3 h-full">
+          <TreeMap />
+        </div>
+        <div className="col-span-3 h-full">
+          <ButtonBar />
+        </div>
+      </div>
     </>
   );
 }
