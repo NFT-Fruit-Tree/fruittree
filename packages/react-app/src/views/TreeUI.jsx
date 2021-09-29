@@ -5,7 +5,7 @@ import React, { useState } from "react";
 import { Address, Balance } from "../components";
 
 // const fruitTreePng = require('../lpc-fruit-trees/fruit-trees.png');
-import fruitTreePng from '../lpc-fruit-trees/fruit-trees.png';
+import fruitTreePng from "../lpc-fruit-trees/fruit-trees.png";
 
 export default function TreeUI({
   purpose,
@@ -21,9 +21,30 @@ export default function TreeUI({
 }) {
   const [newPurpose, setNewPurpose] = useState("loading...");
 
-  const treeStyle1 = {objectFit: 'none', objectPosition: '0 -128px', width: 96, height: 128, position: 'absolute', top: -48};
-  const treeStyle2 = {objectFit: 'none', objectPosition: '0 -256px', width: 96, height: 128, position: 'absolute', top: -48};
-  const treeStyle3 = {objectFit: 'none', objectPosition: '0 -384px', width: 96, height: 128, position: 'absolute', top: -48};
+  const treeStyle1 = {
+    objectFit: "none",
+    objectPosition: "0 -128px",
+    width: 96,
+    height: 128,
+    position: "absolute",
+    top: -48,
+  };
+  const treeStyle2 = {
+    objectFit: "none",
+    objectPosition: "0 -256px",
+    width: 96,
+    height: 128,
+    position: "absolute",
+    top: -48,
+  };
+  const treeStyle3 = {
+    objectFit: "none",
+    objectPosition: "0 -384px",
+    width: 96,
+    height: 128,
+    position: "absolute",
+    top: -48,
+  };
   return (
     <div>
       {/*
@@ -33,75 +54,81 @@ export default function TreeUI({
         <h2>Tree UI:</h2>
         <Divider />
         {/* use utils.formatEther to display a BigNumber: */}
-				<h2>SEED Balance: 1 planted, 2 unplanted</h2>
-				<h2>LAND Balance: 3</h2>
+        <h2>SEED Balance: 1 planted, 2 unplanted</h2>
+        <h2>LAND Balance: 3</h2>
         <h2>FRUIT Balance: {yourLocalBalance ? utils.formatEther(yourLocalBalance) : "..."}</h2>
         <Divider />
         <Card>
           <h1>Your Property</h1>
 
-          <div style={{marginTop: 100, position: 'relative'}}>
+          <div style={{ marginTop: 100, position: "relative" }}>
             <img src={fruitTreePng} style={treeStyle1} />
-            <span class="gnd gnd-tilled-in-grass"><span id="tree-1-1"></span></span>
+            <span class="gnd gnd-tilled-in-grass">
+              <span id="tree-1-1"></span>
+            </span>
           </div>
-					<h3>Stats</h3>
-					<div> X: 25 </div>
-					<div> Y: 10 </div>
-					<div> Health: 60% </div>
-					<div> Stage: Adult </div>
-					<div> Fruit: 2 </div>
+          <h3>Stats</h3>
+          <div> X: 25 </div>
+          <div> Y: 10 </div>
+          <div> Health: 60% </div>
+          <div> Stage: Adult </div>
+          <div> Fruit: 2 </div>
           <Button
             style={{ marginTop: 8 }}
             onClick={async () => {
               /* look how you call setPurpose on your contract: */
               /* notice how you pass a call back for tx updates too */
               const result = tx(writeContracts.YourContract.setPurpose(newPurpose), update => {
-                  console.log("📡 Transaction Update:", update);
-                  if (update && (update.status === "confirmed" || update.status === 1)) {
+                console.log("📡 Transaction Update:", update);
+                if (update && (update.status === "confirmed" || update.status === 1)) {
                   console.log(" 🍾 Transaction " + update.hash + " finished!");
                   console.log(
-                      " ⛽️ " +
+                    " ⛽️ " +
                       update.gasUsed +
                       "/" +
                       (update.gasLimit || update.gas) +
                       " @ " +
                       parseFloat(update.gasPrice) / 1000000000 +
                       " gwei",
-                      );
-                  }
-                  });
+                  );
+                }
+              });
               console.log("awaiting metamask/web3 confirm result...", result);
               console.log(await result);
             }}
           >
-              Water!
+            Water!
           </Button>
           <Button> Fertilize! </Button>
           <Button> Harvest! </Button>
           <Button> Burn! </Button>
-					<Divider />
-          <div style={{marginTop: 100, position: 'relative'}}>
-            <span class="gnd gnd-tilled-in-grass"><span id="tree-1-2"></span></span>
+          <Divider />
+          <div style={{ marginTop: 100, position: "relative" }}>
+            <span class="gnd gnd-tilled-in-grass">
+              <span id="tree-1-2"></span>
+            </span>
           </div>
-					<h3>Stats</h3>
-					<div> X: 26 </div>
-					<div> Y: 10 </div>
-					<div> Health: N/A </div>
-					<div> Stage: Empty Land </div>
-					<div> Fruit: No fruiting tree </div>
+          <h3>Stats</h3>
+          <div> X: 26 </div>
+          <div> Y: 10 </div>
+          <div> Health: N/A </div>
+          <div> Stage: Empty Land </div>
+          <div> Fruit: No fruiting tree </div>
           <Button> Plant Seed! </Button>
-					<Divider />
-          <div style={{marginTop: 100, position: 'relative'}}>
+          <Divider />
+          <div style={{ marginTop: 100, position: "relative" }}>
             <img src={fruitTreePng} style={treeStyle2} />
-            <span class="gnd gnd-tilled-in-grass"><span id="tree-1-2"></span></span>
+            <span class="gnd gnd-tilled-in-grass">
+              <span id="tree-1-2"></span>
+            </span>
           </div>
-					<h3>Stats</h3>
-					<div> X: 26 </div>
-					<div> Y: 12 </div>
-					<div> Health: 100 </div>
-					<div> Thirst: 100 </div>
-					<div> Stage: Teenager </div>
-					<div> Fruit: 0 </div>
+          <h3>Stats</h3>
+          <div> X: 26 </div>
+          <div> Y: 12 </div>
+          <div> Health: 100 </div>
+          <div> Thirst: 100 </div>
+          <div> Stage: Teenager </div>
+          <div> Fruit: 0 </div>
 
           <Button
             style={{ marginTop: 8 }}
@@ -109,36 +136,38 @@ export default function TreeUI({
               /* look how you call setPurpose on your contract: */
               /* notice how you pass a call back for tx updates too */
               const result = tx(writeContracts.YourContract.setPurpose(newPurpose), update => {
-                  console.log("📡 Transaction Update:", update);
-                  if (update && (update.status === "confirmed" || update.status === 1)) {
+                console.log("📡 Transaction Update:", update);
+                if (update && (update.status === "confirmed" || update.status === 1)) {
                   console.log(" 🍾 Transaction " + update.hash + " finished!");
                   console.log(
-                      " ⛽️ " +
+                    " ⛽️ " +
                       update.gasUsed +
                       "/" +
                       (update.gasLimit || update.gas) +
                       " @ " +
                       parseFloat(update.gasPrice) / 1000000000 +
                       " gwei",
-                      );
-                  }
-                  });
+                  );
+                }
+              });
               console.log("awaiting metamask/web3 confirm result...", result);
               console.log(await result);
             }}
           >
-              Water!
+            Water!
           </Button>
           <Button> Fertilize! </Button>
           <Button> Harvest! </Button>
           <Button> Burn! </Button>
-				</Card>
-      	<Divider />
-				<Card>
-        	<h2>Tree Map:</h2>
-					<div>Choose LAND to buy or plant a seed</div>
-          <div style={{position: 'relative'}}>
-            <span class="gnd gnd-tilled-in-grass"><span id="tree-1-1"></span></span>
+        </Card>
+        <Divider />
+        <Card>
+          <h2>Tree Map:</h2>
+          <div>Choose LAND to buy or plant a seed</div>
+          <div style={{ position: "relative" }}>
+            <span class="gnd gnd-tilled-in-grass">
+              <span id="tree-1-1"></span>
+            </span>
             <img src={fruitTreePng} style={treeStyle1} />
             <span class="gnd gnd-tilled-in-grass"></span>
             <img src={fruitTreePng} style={treeStyle2} />
@@ -155,7 +184,7 @@ export default function TreeUI({
             <span class="gnd gnd-tilled-in-grass"></span>
             <span class="gnd gnd-tilled-in-grass"></span>
           </div>
-				</Card>
+        </Card>
         <Divider />
         Your Address:
         <Address address={address} ensProvider={mainnetProvider} fontSize={16} />
@@ -260,60 +289,6 @@ export default function TreeUI({
             );
           }}
         />
-      </div>
-
-      <div style={{ width: 600, margin: "auto", marginTop: 32, paddingBottom: 256 }}>
-        <Card>
-          Check out all the{" "}
-          <a
-            href="https://github.com/austintgriffith/scaffold-eth/tree/master/packages/react-app/src/components"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            📦 components
-          </a>
-        </Card>
-
-        <Card style={{ marginTop: 32 }}>
-          <div>
-            There are tons of generic components included from{" "}
-            <a href="https://ant.design/components/overview/" target="_blank" rel="noopener noreferrer">
-              🐜 ant.design
-            </a>{" "}
-            too!
-          </div>
-
-          <div style={{ marginTop: 8 }}>
-            <Button type="primary">Buttons</Button>
-          </div>
-
-          <div style={{ marginTop: 8 }}>
-            <SyncOutlined spin /> Icons
-          </div>
-
-          <div style={{ marginTop: 8 }}>
-            Date Pickers?
-            <div style={{ marginTop: 2 }}>
-              <DatePicker onChange={() => {}} />
-            </div>
-          </div>
-
-          <div style={{ marginTop: 32 }}>
-            <Slider range defaultValue={[20, 50]} onChange={() => {}} />
-          </div>
-
-          <div style={{ marginTop: 32 }}>
-            <Switch defaultChecked onChange={() => {}} />
-          </div>
-
-          <div style={{ marginTop: 32 }}>
-            <Progress percent={50} status="active" />
-          </div>
-
-          <div style={{ marginTop: 32 }}>
-            <Spin />
-          </div>
-        </Card>
       </div>
     </div>
   );

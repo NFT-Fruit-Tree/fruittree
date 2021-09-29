@@ -1,3 +1,19 @@
+:root{
+  /* CSS HEX */
+--forest-green-web: #2F8136ff;
+--coffee: #744A33ff;
+--forest-green-web-2: #358534ff;
+--davys-grey: #575a5eff;
+--dark-jungle-green: #222823ff;
+
+/* CSS HSL */
+--forest-green-web: hsla(125, 47%, 35%, 1);
+--coffee: hsla(21, 39%, 33%, 1);
+--forest-green-web-2: hsla(119, 44%, 36%, 1);
+--davys-grey: hsla(214, 4%, 35%, 1);
+--dark-jungle-green: hsla(130, 8%, 15%, 1);
+}
+
 body {
   margin: 0;
 }
@@ -37,4 +53,3 @@ code {
   width: 64px;
   background-position: -32px -352px;
 }
-
