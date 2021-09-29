@@ -7,6 +7,107 @@ import { Address, Balance } from "../components";
 // const fruitTreePng = require('../lpc-fruit-trees/fruit-trees.png');
 import fruitTreePng from '../lpc-fruit-trees/fruit-trees.png';
 
+// stuff we might need from App.jsx
+// import { Transactor } from "./helpers";
+import {
+  useBalance,
+  useContractLoader,
+  useContractReader,
+  useGasPrice,
+  useOnBlock,
+  useUserProviderAndSigner,
+} from "eth-hooks";
+/*
+import {
+  useEventListener,
+} from "eth-hooks/events/useEventListener";
+import { useContractConfig } from "./hooks"
+*/
+
+const ST_SEED = 'Seed'; // 0;
+const ST_ADULT = 'Adult'; // 5;
+function mass2stage(m) {
+	if (m < 100) return ST_SEEd;
+	return ST_ADULT;
+}
+
+const speciesNames = ['Apple', 'Citrus', 'Cocos', 'Banana', 'Pine', 'XXX', 'YYY', 'Enneftree'];
+function species2name(speciesIdx) {
+	return speciesNames[speciesIdx];
+}
+
+//export default
+function TreeCard({
+	idx,
+  address,
+  mainnetProvider,
+  localProvider,
+  tx,
+  readContracts,
+  writeContracts,
+}) {
+  const treeStyle1 = {objectFit: 'none', objectPosition: '0 -128px', width: 96, height: 128, position: 'absolute', top: -48};
+  const treeStyle2 = {objectFit: 'none', objectPosition: '0 -256px', width: 96, height: 128, position: 'absolute', top: -48};
+  const treeStyle3 = {objectFit: 'none', objectPosition: '0 -384px', width: 96, height: 128, position: 'absolute', top: -48};
+  const treeStyleCocos = {objectFit: 'none', objectPosition: '0 -1024px', width: 96, height: 128, position: 'absolute', top: -48};
+console.log(address, idx);
+	const seedIdObj = useContractReader(readContracts, "Seed", "tokenOfOwnerByIndex", [address, idx]);
+	const seedId = seedIdObj ? seedIdObj.toNumber() : -1;
+	const species = 7; // TODO useContractReader(readContracts, "Seed", "species", [seedId]);
+	const speciesName = species2name(species);
+	const mass = 100; // TODO useContractReader(readContracts, "Seed", "mass", [seedId]);
+	const fruitMass = 100; // TODO useContractReader(readContracts, "Seed", "mass", [seedId]);
+	const fruitCount = Math.floor(fruitMass / 10);
+
+	const treeStyle = treeStyleCocos; // [treeStyle1, treeStyle2, treeStyle3][species % 3]; // XXX just show some variation
+
+	return (
+		<Card>
+          <div style={{marginTop: 100, position: 'relative'}}>
+            <img src={fruitTreePng} style={treeStyle} />
+            <span className="gnd gnd-tilled-in-grass"><span id={"tree-1-" + idx}></span></span>
+          </div>
+					<h3>Stats</h3>
+					<div> ID: { seedId }</div>
+					<div> Species: { speciesName }</div>
+					<div> X: { seedId % 32 } </div>
+					<div> Y: { Math.floor(seedId / 32) }</div>
+					<div> Health: 60% TODO Thirst?</div>
+					<div> Stage: { mass2stage(mass) }</div>
+					<div> Fruit: { fruitCount } </div>
+          <Button
+            style={{ marginTop: 8 }}
+            onClick={async () => {
+              const result = tx(writeContracts.Seed.water(), update => {
+                  console.log("📡 Transaction Update:", update);
+                  if (update && (update.status === "confirmed" || update.status === 1)) {
+                  console.log(" 🍾 Transaction " + update.hash + " finished!");
+                  console.log(
+                      " ⛽️ " +
+                      update.gasUsed +
+                      "/" +
+                      (update.gasLimit || update.gas) +
+                      " @ " +
+                      parseFloat(update.gasPrice) / 1000000000 +
+                      " gwei",
+                      );
+                  }
+                  });
+              console.log("awaiting metamask/web3 confirm result...", result);
+              console.log(await result);
+            }}
+          >
+              Water!
+          </Button>
+          <Button> _Fertilize! </Button>
+          <Button> _Harvest! </Button>
+          <Button> _Burn! </Button>
+					<Divider />
+		</Card>
+	);
+}
+
+
 export default function TreeUI({
   purpose,
   setPurposeEvents,
@@ -21,6 +122,29 @@ export default function TreeUI({
 }) {
   const [newPurpose, setNewPurpose] = useState("loading...");
 
+	const landSupply = useContractReader(readContracts, "Land", "totalSupply");
+	const fruitTotalSupply = useContractReader(readContracts, "Fruit", "totalSupply");
+	const fruitBalance = useContractReader(readContracts, "Fruit", "balanceOf", [address]);
+	const seedBalance = useContractReader(readContracts, "Seed", "balanceOf", [address]);
+/*
+
+Show My Balances of: Seeds (Trees), Land Plots, Fruits
+- balanceOf
+
+For each Seed, show:
+- DNA + show traits based on DNA
+- species (from DNA)
+- mass/stage - dead or not
+- fruit mass/count
+- last watered, current water level
+- last fertilized
+- don't show factors, let user figure them out
+
+*/
+	// iterate over all tokenOfOwnerByIndex from 0 to balanceOf
+	// XXX quick hack - load max 5 trees
+	const seedTokensOfOwnerByIndex = [...Array(Math.min(5, seedBalance ? seedBalance.toNumber() : 0)).keys()];
+
   const treeStyle1 = {objectFit: 'none', objectPosition: '0 -128px', width: 96, height: 128, position: 'absolute', top: -48};
   const treeStyle2 = {objectFit: 'none', objectPosition: '0 -256px', width: 96, height: 128, position: 'absolute', top: -48};
   const treeStyle3 = {objectFit: 'none', objectPosition: '0 -384px', width: 96, height: 128, position: 'absolute', top: -48};
@@ -33,127 +157,46 @@ export default function TreeUI({
         <h2>Tree UI:</h2>
         <Divider />
         {/* use utils.formatEther to display a BigNumber: */}
-				<h2>SEED Balance: 1 planted, 2 unplanted</h2>
-				<h2>LAND Balance: 3</h2>
-        <h2>FRUIT Balance: {yourLocalBalance ? utils.formatEther(yourLocalBalance) : "..."}</h2>
+				<h2>SEED Balance: 1 planted, 2 unplanted TODO traverse my seed tokens and count which have seed stage</h2>
+				XXX but TreeCard component loads tree data as component state without bubbling up...
+				<h2>LAND Balance (temp showing totalSupply): {landSupply ? landSupply.toString() : '...'}</h2>
+        <h2>FRUIT Balance: {fruitBalance ? utils.formatEther(fruitBalance) : "..."} of totalSupply {fruitTotalSupply ? utils.formatEther(fruitTotalSupply) : '...'}</h2>
         <Divider />
         <Card>
-          <h1>Your Property</h1>
+          <h1>Your Property: Iterate over Seed tokens, then empty Land</h1>
 
-          <div style={{marginTop: 100, position: 'relative'}}>
-            <img src={fruitTreePng} style={treeStyle1} />
-            <span class="gnd gnd-tilled-in-grass"><span id="tree-1-1"></span></span>
-          </div>
-					<h3>Stats</h3>
-					<div> X: 25 </div>
-					<div> Y: 10 </div>
-					<div> Health: 60% </div>
-					<div> Stage: Adult </div>
-					<div> Fruit: 2 </div>
-          <Button
-            style={{ marginTop: 8 }}
-            onClick={async () => {
-              /* look how you call setPurpose on your contract: */
-              /* notice how you pass a call back for tx updates too */
-              const result = tx(writeContracts.YourContract.setPurpose(newPurpose), update => {
-                  console.log("📡 Transaction Update:", update);
-                  if (update && (update.status === "confirmed" || update.status === 1)) {
-                  console.log(" 🍾 Transaction " + update.hash + " finished!");
-                  console.log(
-                      " ⛽️ " +
-                      update.gasUsed +
-                      "/" +
-                      (update.gasLimit || update.gas) +
-                      " @ " +
-                      parseFloat(update.gasPrice) / 1000000000 +
-                      " gwei",
-                      );
-                  }
-                  });
-              console.log("awaiting metamask/web3 confirm result...", result);
-              console.log(await result);
-            }}
-          >
-              Water!
-          </Button>
-          <Button> Fertilize! </Button>
-          <Button> Harvest! </Button>
-          <Button> Burn! </Button>
-					<Divider />
-          <div style={{marginTop: 100, position: 'relative'}}>
-            <span class="gnd gnd-tilled-in-grass"><span id="tree-1-2"></span></span>
-          </div>
-					<h3>Stats</h3>
-					<div> X: 26 </div>
-					<div> Y: 10 </div>
-					<div> Health: N/A </div>
-					<div> Stage: Empty Land </div>
-					<div> Fruit: No fruiting tree </div>
-          <Button> Plant Seed! </Button>
-					<Divider />
-          <div style={{marginTop: 100, position: 'relative'}}>
-            <img src={fruitTreePng} style={treeStyle2} />
-            <span class="gnd gnd-tilled-in-grass"><span id="tree-1-2"></span></span>
-          </div>
-					<h3>Stats</h3>
-					<div> X: 26 </div>
-					<div> Y: 12 </div>
-					<div> Health: 100 </div>
-					<div> Thirst: 100 </div>
-					<div> Stage: Teenager </div>
-					<div> Fruit: 0 </div>
-
-          <Button
-            style={{ marginTop: 8 }}
-            onClick={async () => {
-              /* look how you call setPurpose on your contract: */
-              /* notice how you pass a call back for tx updates too */
-              const result = tx(writeContracts.YourContract.setPurpose(newPurpose), update => {
-                  console.log("📡 Transaction Update:", update);
-                  if (update && (update.status === "confirmed" || update.status === 1)) {
-                  console.log(" 🍾 Transaction " + update.hash + " finished!");
-                  console.log(
-                      " ⛽️ " +
-                      update.gasUsed +
-                      "/" +
-                      (update.gasLimit || update.gas) +
-                      " @ " +
-                      parseFloat(update.gasPrice) / 1000000000 +
-                      " gwei",
-                      );
-                  }
-                  });
-              console.log("awaiting metamask/web3 confirm result...", result);
-              console.log(await result);
-            }}
-          >
-              Water!
-          </Button>
-          <Button> Fertilize! </Button>
-          <Button> Harvest! </Button>
-          <Button> Burn! </Button>
+					{
+					  seedTokensOfOwnerByIndex.map(idx => <TreeCard key={'treecard-'+idx}
+							idx={idx}
+							address={address}
+							readContracts={readContracts}
+							writeContracts={writeContracts}
+							tx={tx}
+						 />
+					  )
+				  }
 				</Card>
       	<Divider />
 				<Card>
         	<h2>Tree Map:</h2>
 					<div>Choose LAND to buy or plant a seed</div>
           <div style={{position: 'relative'}}>
-            <span class="gnd gnd-tilled-in-grass"><span id="tree-1-1"></span></span>
+            <span className="gnd gnd-tilled-in-grass"><span id="tree-1-1"></span></span>
             <img src={fruitTreePng} style={treeStyle1} />
-            <span class="gnd gnd-tilled-in-grass"></span>
+            <span className="gnd gnd-tilled-in-grass"></span>
             <img src={fruitTreePng} style={treeStyle2} />
-            <span class="gnd gnd-tilled-in-grass"></span>
+            <span className="gnd gnd-tilled-in-grass"></span>
             <img src={fruitTreePng} style={treeStyle3} />
-            <span class="gnd gnd-tilled-in-grass"></span>
+            <span className="gnd gnd-tilled-in-grass"></span>
             <span id="t1"></span>
-            <span class="gnd gnd-tilled-in-grass"></span>
-            <span class="gnd gnd-tilled-in-grass"></span>
-            <span class="gnd gnd-tilled-in-grass"></span>
-            <span class="gnd gnd-tilled-in-grass"></span>
-            <span class="gnd gnd-tilled-in-grass"></span>
-            <span class="gnd gnd-tilled-in-grass"></span>
-            <span class="gnd gnd-tilled-in-grass"></span>
-            <span class="gnd gnd-tilled-in-grass"></span>
+            <span className="gnd gnd-tilled-in-grass"></span>
+            <span className="gnd gnd-tilled-in-grass"></span>
+            <span className="gnd gnd-tilled-in-grass"></span>
+            <span className="gnd gnd-tilled-in-grass"></span>
+            <span className="gnd gnd-tilled-in-grass"></span>
+            <span className="gnd gnd-tilled-in-grass"></span>
+            <span className="gnd gnd-tilled-in-grass"></span>
+            <span className="gnd gnd-tilled-in-grass"></span>
           </div>
 				</Card>
         <Divider />
