@@ -41,7 +41,7 @@
     "graphiql": "^1.0.5",
     "graphql": "^15.3.0",
     "isomorphic-fetch": "^3.0.0",
-    "node-sass": "^6.0.1",
+    "node-sass": "^4.0.0",
     "node-watch": "^0.7.1",
     "postcss": "^8.2.6",
     "qrcode.react": "^1.0.0",
@@ -86,10 +86,10 @@
     "extends": "react-app"
   },
   "scripts": {
-    "build": "react-scripts build",
     "eject": "react-scripts eject",
     "prestart": "node ./scripts/create_contracts.js",
     "start": "react-scripts start",
+    "build": "react-scripts build",
     "test": "react-scripts test",
     "lint": "eslint --config ./.eslintrc.js --ignore-path ./.eslintignore ./src/**/*",
     "ipfs": "node ./scripts/ipfs.js",

@@ -64,6 +64,5 @@
       "**/hardhat-ts",
       "**/hardhat-ts/**"
     ]
-  },
-  "dependencies": {}
+  }
 }
