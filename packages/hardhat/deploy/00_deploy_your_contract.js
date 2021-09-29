@@ -2,41 +2,42 @@
 
 const { ethers } = require("hardhat");
 
-const myAddress = "0xcbBBFcd4DFcc67fF0Bdbbd59D9b91F38D4dBE494";
-
 module.exports = async ({ getNamedAccounts, deployments }) => {
     const { deploy } = deployments;
     const { deployer } = await getNamedAccounts();
 
+    await deploy("Currency", {
+        from: deployer,
+        log: true,
+    });
+    const currency = await ethers.getContract("Currency");
+
     await deploy("Fruit", {
         from: deployer,
+        args: [currency.address],
         log: true,
     });
-
-    await deploy("Fertilizer", {
-        from: deployer,
-        log: true,
-    });
-
     await deploy("Land", {
         from: deployer,
+        args: [currency.address],
         log: true,
     });
-
-    const fertilizer = await ethers.getContract("Fertilizer");
-    const fruit = await ethers.getContract("Fruit");
     const land = await ethers.getContract("Land");
+    const fruit = await ethers.getContract("Fruit");
 
-    const seed = await deploy("Seed", {
+    await deploy("Seed", {
         from: deployer,
-        args: [land.address, fruit.address, fertilizer.address],
+        args: [land.address, fruit.address, currency.address],
         log: true,
     });
 
-    await fertilizer.transfer(myAddress, ethers.utils.parseEther("10"));
-    await fruit.transfer(myAddress, ethers.utils.parseEther("10"));
-    const landId = await land.tokenOfOwnerByIndex(deployer, 0);
-    await land.safeTransfer(myAddress, landId);
+    console.log("📢 Premint started...");
+    const step = 80;
+    for (let i = 0; i < Math.min(i + step, 1024); i += step) {
+        await land.premint(i, Math.min(i + step - 1, 1024));
+    }
+    await land.renounceOwnership();
+    console.log("✅ Premint ended...");
 
     /*
       // Getting a previously deployed contract

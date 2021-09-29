@@ -548,7 +548,7 @@ function App(props) {
             />
             <Divider />
             <Contract
-              name="Fertilizer"
+              name="Currency"
               signer={userSigner}
               provider={localProvider}
               address={address}

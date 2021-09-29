@@ -8,13 +8,7 @@ import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Counters } from "@openzeppelin/contracts/utils/Counters.sol";
 import { Land } from "./Land.sol";
 import { Fruit } from "./Fruit.sol";
-
-/// You are not authorized to do this action
-error UnauthorizedError();
-/// You did not send enough funds
-error InsufficientFundsError();
-/// The `symbol` transfer from `from` to `to` for `amount` failed
-error TransferError(address token, address from, address to, uint256 amount);
+import { UnauthorizedError, InsufficientFundsError, TransferError } from "./Shared.sol";
 
 /**
  * The Seed contract of the `nft-fruit-tree` game.
@@ -58,12 +52,9 @@ contract Seed is ERC721, ERC721Enumerable {
     uint8 constant _extraCosmeticLastBitPosition = _extraColorLastBitPosition - 3; 
     uint8 constant _extraCosmeticMask = 2 ** 3 - 1;
 
-    // The Land contract
-    Land immutable land;
-    // The fruit token
-    Fruit immutable fruit;
-    // The interest bearing token used as fertilizer
-    ERC20 immutable fertilizer;
+    Land immutable land; // The Land token contract
+    Fruit immutable fruit; // The Fruit token contract
+    ERC20 immutable currency; // The ERC20 used as currency
 
     enum TreeState {
         SEED, 
@@ -124,10 +115,10 @@ contract Seed is ERC721, ERC721Enumerable {
     /// You cannot mint another seed this block
     error MintingForbiddenError();
 
-    constructor(address _landAddress, address _fruitAddress, address _fertilizerAddress) ERC721("Seed", "SEED") {
+    constructor(address _landAddress, address _fruitAddress, address _currencyAddress) ERC721("Seed", "SEED") {
         land = Land(_landAddress);
         fruit = Fruit(_fruitAddress);
-        fertilizer = ERC20(_fertilizerAddress);
+        currency = ERC20(_currencyAddress);
     }
 
     /* --- Player actions functions --- */
@@ -183,7 +174,7 @@ contract Seed is ERC721, ERC721Enumerable {
         TreeState _treeState = state(_seedId);
         if (_treeState != TreeState.ADULT) revert InvalidStateError(_treeState);
         // Transfer the amount of fertilizer from the sender to this contract
-        if (!fertilizer.transferFrom(msg.sender, address(this), fertilizerAmount)) revert TransferError(address(fertilizer), msg.sender, address(this), fertilizerAmount);
+        if (!currency.transferFrom(msg.sender, address(this), fertilizerAmount)) revert TransferError(address(currency), msg.sender, address(this), fertilizerAmount);
         // Update the tree state
         _updateState(_seedId);
         treeData[_seedId].lastFertilizedAt = block.timestamp;
@@ -319,7 +310,7 @@ contract Seed is ERC721, ERC721Enumerable {
 
     /// Calculate the tree's water level
     function waterLevel(uint256 _seedId) public view returns (int256) {
-        uint8 _treeWaterUseFactor = waterUseFactor(_seedId);
+        uint8 _treeWaterUseFactor = _waterUseFactor(treeData[_seedId]);
         return int256(100 - _treeWaterUseFactor * (block.timestamp - treeData[_seedId].lastWateredAt));
     }
 
@@ -341,6 +332,11 @@ contract Seed is ERC721, ERC721Enumerable {
 
     /* --- Seed trait functions --- */
 
+    function traits(uint256 _seedId) external view returns (uint8 species, uint8 growthFactor, uint8 waterUseFactor, uint8 fertilizerUseFactor, uint8 fruitGrowthFactor) {
+        TreeData storage _seed = treeData[_seedId];
+        return (_species(_seed), _growthFactor(_seed), _waterUseFactor(_seed), _fertilizerUseFactor(_seed), _fruitGrowthFactor(_seed));
+    }
+
     /**
      * @dev Extract a trait value from the seed's dna
      * @param lastBitPosition clears the right bits of the seed
@@ -352,74 +348,54 @@ contract Seed is ERC721, ERC721Enumerable {
         //                               & 0000_1111 <- bit mask
         //                                 0000_0101 = 5
         return uint8(_dna >> lastBitPosition) & bitsMask;
-    } 
-
-    /// Calculate the tree's growth factor
-    function growthFactor(uint256 _seedId) public view returns (uint8) {
-        return _growthFactor(treeData[_seedId]);
     }
 
+    // Get the species of a seed from its DNA
+    function _species(TreeData storage _seed) internal view returns (uint8) {
+        return _traitFromDNA(_seed.dna, _speciesLastBitPosition, _speciesMask);
+    }
+
+    // Calculate the tree's growth factor
     function _growthFactor(TreeData storage _seed) internal view returns (uint8) {
         // TODO: use the land with the seed trait instead
         return _traitFromDNA(_seed.dna, _treeGrowthFactorLastBitPosition, _treeGrowthFactorMask);
     }
 
-    /// Calculate the tree's water use factor
-    function waterUseFactor(uint256 _seedId) public view returns (uint8) {
-        return _waterUseFactor(treeData[_seedId]);
-    }
-
+    // Calculate the tree's water use factor
     function _waterUseFactor(TreeData storage _seed) internal view returns (uint8) {
         return _traitFromDNA(_seed.dna, _treeWaterUseFactorLastBitPosition, _treeWaterUseFactorMask);
     }
 
-    /// Calculate the tree's fertilizer use factor
-    function fertilizerUseFactor(uint256 _seedId) public view returns (uint8) {
-        return _fertilizerUseFactor(treeData[_seedId]);
-    }
-
+    // Calculate the tree's fertilizer use factor
     function _fertilizerUseFactor(TreeData storage _seed) internal view returns (uint8) {
         return _traitFromDNA(_seed.dna, _treeFertilizerUseFactorLastBitPosition, _treeFertilizerUseFactorMask);
     }
 
-    /// Calculate the tree's fruit growth factor
-    function fruitGrowthFactor(uint256 _seedId) public view returns (uint8) {
-        return _fruitGrowthFactor(treeData[_seedId]);
-    }
-
+    // Calculate the tree's fruit growth factor
     function _fruitGrowthFactor(TreeData storage _seed) internal view returns (uint8) {
         return _traitFromDNA(_seed.dna, _fruitGrowthFactorLastBitPosition, _fruitGrowthFactorMask);
     }
 
-    /*
-    /// Get the species of a seed from its DNA
-    function species(uint32 _dna) public pure returns (uint8) {
-        return _traitFromDNA(_dna, _speciesLastBitPosition, _speciesMask);
+    // Calculate the tree's longevity
+    function _longevity(TreeData storage _seed) internal view returns (uint8) {
+        return _traitFromDNA(_seed.dna, _longevityLastBitPosition, _longevityMask);
     }
 
-    /// Get the longevity of a seed from its DNA
-    function longevity(uint32 _dna) public pure returns (uint8) {
-        return _traitFromDNA(_dna, _longevityLastBitPosition, _longevityMask);
+    /* Still needed ?
+    function _fruitColor(TreeData storage _seed) internal view returns (uint8) {
+        return _traitFromDNA(_seed.dna, _fruitColorLastBitPosition, _fruitColorMask);
     }
 
-    /// Get the fruit color of a seed from its DNA
-    function fruitColor(uint32 _dna) public pure returns (uint8) {
-        return _traitFromDNA(_dna, _fruitColorLastBitPosition, _fruitColorMask);
+    function _leaveColor(TreeData storage _seed) internal view returns (uint8) {
+        return _traitFromDNA(_seed.dna, _leaveColorLastBitPosition, _leaveColorMask);
     }
 
-    /// Get the leave color of a seed from its DNA
-    function leaveColor(uint32 _dna) public pure returns (uint8) {
-        return _traitFromDNA(_dna, _leaveColorLastBitPosition, _leaveColorMask);
+    function _extraColor(TreeData storage _seed) internal view returns (uint8) {
+        return _traitFromDNA(_seed.dna, _extraColorLastBitPosition, _extraColorMask);
     }
 
-    /// Get the extra color of a seed from its DNA
-    function extraColor(uint32 _dna) public pure returns (uint8) {
-        return _traitFromDNA(_dna, _extraColorLastBitPosition, _extraColorMask);
-    }
-
-    /// Get the extra cosmetic of a seed from its DNA
-    function extraCosmetic(uint32 _dna) public pure returns (uint8) {
-        return _traitFromDNA(_dna, _extraCosmeticLastBitPosition, _extraCosmeticMask);
+    function _extraCosmetic(TreeData storage _seed) internal view returns (uint8) {
+        return _traitFromDNA(_seed.dna, _extraCosmeticLastBitPosition, _extraCosmeticMask);
     }
     */
 
