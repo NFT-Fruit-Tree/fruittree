@@ -24,19 +24,24 @@ export default function TreeUI({
   writeContracts,
 }) {
   return (
-    <>
+    <div className="h-full flex flex-col">
       <NavBar />
-      <div className="grid grid-cols-4 grid-rows-2 h-full">
-        <div className="col-span-1 row-span-2 h-full">
+      <div className="grid grid-cols-4 h-full">
+        <div className="col-span-1 row-span-6 h-full">
           <SidePanel />
         </div>
-        <div className="col-span-3 h-full">
-          <TreeMap />
-        </div>
-        <div className="col-span-3 h-full">
-          <ButtonBar />
+        <div className="col-span-3">
+          <div className="">
+            <TreeMap />
+            <TreeMap />
+            <TreeMap />
+            <TreeMap />
+          </div>
+          <div className="">
+            <ButtonBar />
+          </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
