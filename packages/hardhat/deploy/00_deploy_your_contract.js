@@ -33,8 +33,13 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
 
     console.log("📢 Premint started...");
     const step = 50;
-    for (let i = 0; i < Math.min(i + step, 1024); i += step) {
-        await land.premint(i, Math.min(i + step - 1, 1024));
+    for (let i = 0; i < 1024; i += step) {
+        try {
+            await land.premint(i, i + step);
+        } catch (e) {
+            console.error(`🛑 Premint failed for i from ${i}`);
+            throw e;
+        }
     }
     await land.renounceOwnership();
     console.log("✅ Premint ended...");

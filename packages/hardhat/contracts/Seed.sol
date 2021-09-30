@@ -100,7 +100,9 @@ contract Seed is ERC721, ERC721Enumerable {
     }
 
     // Mapping from a Seed token Id to its TreeData
-    mapping (uint256 => TreeData) treeData;
+    mapping (uint256 => TreeData) public treeData;
+    // Mapping from a land id to a seed id
+    mapping (uint16 => uint256) private _seedByLandId;
     // Mapping from a block number to the number of minted seeds in this block
     mapping (uint256 => uint8) mintedTokensPerBlock;
 
@@ -108,7 +110,7 @@ contract Seed is ERC721, ERC721Enumerable {
     event Watered(uint256 indexed seedId);
     event Fertilized(uint256 indexed seedId, uint256 fertilizerAmount);
     event Harvested(uint256 indexed seedId, uint256 fruitAmount);
-    /// The seed `id` is already planted
+    /// The seed is already planted
     error AlreadyPlantedError();
     /// No planted seeds
     error NoPlantedSeedError();
@@ -157,10 +159,12 @@ contract Seed is ERC721, ERC721Enumerable {
     function plant(uint256 _seedId, uint16 _landId) external {
         // Check if the token exists and if the sender owns the seed AND the land
         if (ownerOf(_seedId) != msg.sender || land.ownerOf(_landId) != msg.sender) revert UnauthorizedError();
-        // Check if the seed is not already planted
-        if (_isPlanted(treeData[_seedId])) revert AlreadyPlantedError();
+        // Check if the seed is not already planted and if the land is not already taken
+        if (_isPlanted(treeData[_seedId]) || _isLandTaken(_landId)) revert AlreadyPlantedError();
         // Initialize the tree data
         _initializeState(_seedId, _landId);
+        // Update the land id to seed id mapping
+        _seedByLandId[_landId] = _seedId;
         // Event
         emit Planted(_seedId, _landId);
     }
@@ -173,8 +177,7 @@ contract Seed is ERC721, ERC721Enumerable {
         // Check if the token exists
         if (!_exists(_seedId)) revert UnauthorizedError();
         // Check if it is a adult tree
-        TreeState _treeState = state(_seedId);
-        if (_treeState != TreeState.ADULT) revert InvalidStateError(_treeState);
+        if (!_isAdult(_seedId)) revert InvalidStateError(state(_seedId));
         // Transfer the amount of fertilizer from the sender to this contract
         if (!currency.transferFrom(msg.sender, address(this), fertilizerAmount)) revert TransferError(address(currency), msg.sender, address(this), fertilizerAmount);
         // Update the tree state
@@ -208,7 +211,7 @@ contract Seed is ERC721, ERC721Enumerable {
         // Check if the token exists and if the sender owns the tree
         if (ownerOf(_seedId) != msg.sender) revert UnauthorizedError();
         // Check if it is an adult tree
-        if (state(_seedId) != TreeState.ADULT) revert InvalidStateError(state(_seedId));
+        if (!_isAdult(_seedId)) revert InvalidStateError(state(_seedId));
         // Update the tree data
         _updateState(_seedId);
         // Calculate the unharvested fruit amount
@@ -231,9 +234,13 @@ contract Seed is ERC721, ERC721Enumerable {
         if (ownerOf(_seedId) != msg.sender || land.ownerOf(_newLandId) != msg.sender) revert UnauthorizedError();
         // Check if it is planted
         if (!_isPlanted(treeData[_seedId])) revert NoPlantedSeedError();
+        // Check if the land is not already taken
+        if (_isLandTaken(_newLandId)) revert AlreadyPlantedError();
         // Update the tree state
         _updateState(_seedId);
         treeData[_seedId].landId = _newLandId;
+        // Update the land id to seed id mapping
+        _seedByLandId[_newLandId] = _seedId;
         // Event
         emit Planted(_seedId, _newLandId);
     }
@@ -251,6 +258,69 @@ contract Seed is ERC721, ERC721Enumerable {
     }
 
     /* --- Seed state functions --- */
+
+    /// Calculate the seed's state
+    function state(uint256 _seedId) public view returns (TreeState) {
+        // Check if the seed is planted
+        if (!_isPlanted(treeData[_seedId])) return TreeState.SEED;
+        // Check if the tree is dead
+        int256 _treeWaterLevel = _waterLevel(treeData[_seedId]);
+        if (_treeWaterLevel <= driedDeath) return TreeState.DEAD;
+        // Calculate the tree's mass
+        uint256 _treeMass = _mass(treeData[_seedId]);
+        // Calculate the tree's stage
+        uint256 _stage = _treeMass / massPerStage;
+        if (_stage >= uint8(TreeState.ADULT)) return TreeState.ADULT;
+        return TreeState(_stage);
+   }
+
+    /// Calculate the tree's current mass
+    function mass(uint256 _seedId) external view returns (uint256) {
+        // Check if the seed is planted
+        if (!_isPlanted(treeData[_seedId])) return 0;
+        // Calculate the planted seed mass
+        return _mass(treeData[_seedId]);
+    }
+
+    /// Calculate the tree's water level
+    function waterLevel(uint256 _seedId) public view returns (int256) {
+        // Check if the seed is planted
+        if (!_isPlanted(treeData[_seedId])) return 0;
+        return _waterLevel(treeData[_seedId]);
+    }
+
+    /// Calculate the tree's fruit mass
+    function fruitMass(uint256 _seedId) external view returns (uint256) {
+        // Check if the seed is an adult
+        if (!_isAdult(_seedId)) return 0;
+        return _fruitMass(treeData[_seedId]);
+    }
+
+    /// Calculate how many fruits you can harvest on a tree
+    function unharvestedFruitCount(uint256 _seedId) public view returns (uint256) {
+        // Check if the seed is an adult
+        if (!_isAdult(_seedId)) return 0;
+        return _fruitMass(treeData[_seedId]) / wholeFruitMass;
+    }
+
+    /// Get the tree's land id
+    function landId(uint256 _seedId) external view returns (uint16) {
+        // Check if the seed is planted
+        if (!_isPlanted(treeData[_seedId])) return type(uint16).max;
+        return treeData[_seedId].landId;
+    }
+
+    /// Get the land's tree id
+    function seedByLandId(uint16 _landId) public view returns (uint256) {
+        // Check if the land id is valid
+        land.idToCoordinates(_landId);
+        // Get the seed id by the land id
+        uint256 _seedId = _seedByLandId[_landId];
+        // Check the special case where _landId = 0
+        if (treeData[_seedId].landId == _landId && _isPlanted(treeData[_seedId])) return _seedId;
+        // It should only happen when there is no seed planted on this land
+        return type(uint256).max;
+    }
 
     // Calculate and save the seed's new state
     function _updateState(uint256 _seedId) internal {
@@ -283,27 +353,13 @@ contract Seed is ERC721, ERC721Enumerable {
         _seed.lastWateredAt = block.timestamp;
         _seed.landId = _landId;
     }
-
-    /// Calculate the seed's state
-    function state(uint256 _seedId) public view returns (TreeState) {
-        // Check if the seed is planted, if it has a land
-        if (_isPlanted(treeData[_seedId])) return TreeState.SEED;
-        // Check if the tree is dead
-        int256 _waterLevel = waterLevel(_seedId);
-        if (_waterLevel <= driedDeath) return TreeState.DEAD;
-        // Calculate the tree's mass
-        uint256 _treeMass = _mass(treeData[_seedId]);
-        // Calculate the tree's stage
-        uint256 _stage = _treeMass / massPerStage;
-        if (_stage >= uint8(TreeState.ADULT)) return TreeState.ADULT;
-        return TreeState(_stage);
+    
+    // Calculate the tree's water level
+    function _waterLevel(TreeData storage _seed) internal view returns (int256) {
+        uint256 _treeWaterUseFactor = _waterUseFactor(_seed);
+        return 100 - int256(_treeWaterUseFactor * (block.timestamp - _seed.lastWateredAt));
     }
-
-    /// Calculate the tree's current mass
-    function mass(uint256 _seedId) external view returns (uint256) {
-        return _mass(treeData[_seedId]);
-    }
-
+    
     // Calculate the tree's mass
     function _mass(TreeData storage _seed) internal view returns (uint256) {
         // Calculate the time when the tree runs of water
@@ -312,22 +368,6 @@ contract Seed is ERC721, ERC721Enumerable {
         uint256 _hydratedTilNow = Math.min(block.timestamp, _hydratedTil);
         // Calculate the new tree mass from the previously calculated mass and calculated the new one
         return _seed.lastMass + _growthFactor(_seed) * (_hydratedTilNow - _seed.lastSnapshotedAt) / 3600;
-    }
-
-    // FIXME: 🚨 ONLY FOR DEBUGGING PURPOSES. TO REMOVE BEFORE DEPLOYMENT 🚨 
-    function _debugForceSetMass(uint256 _seedId, uint256 _treeMass) external {
-        treeData[_seedId].lastMass = _treeMass;
-    }
-
-    /// Calculate the tree's water level
-    function waterLevel(uint256 _seedId) public view returns (int256) {
-        uint8 _treeWaterUseFactor = _waterUseFactor(treeData[_seedId]);
-        return int256(100 - _treeWaterUseFactor * (block.timestamp - treeData[_seedId].lastWateredAt));
-    }
-
-    /// Calculate the tree's fruit mass
-    function fruitMass(uint256 _seedId) external view returns (uint256) {
-        return _fruitMass(treeData[_seedId]);
     }
 
     // Calculate the tree's fruit mass
@@ -340,38 +380,37 @@ contract Seed is ERC721, ERC721Enumerable {
         return _seed.lastFruitMass + _fruitGrowthFactor(_seed) * (_fertilizedTilNow - _seed.lastSnapshotedAt) / 3600;
     }
 
-    /// Calculate how many fruits you can harvest on a tree
-    function unharvestedFruitCount(uint256 _seedId) public view returns (uint256) {
-        // Calculate the fruit mass
-        uint256 _treeFruitMass = _fruitMass(treeData[_seedId]);
-        return _treeFruitMass / wholeFruitMass;
-    }
-
-    /// Get the tree's land id
-    function landId(uint256 _seedId) external view returns (uint16) {
-        if (!_isPlanted(treeData[_seedId])) return type(uint16).max;
-        return treeData[_seedId].landId;
-    }
-
-    /// Get the land's tree id
-    function seedByLandId(uint16 _landId) external view returns (uint256) {
-        // Check if the land id is valid
-        land.idToCoordinates(_landId);
-        // Loop over all tokens to find the one on this land
-        for (uint256 i = 0; i < totalSupply(); i++) {
-            uint256 _seedId = tokenByIndex(i);
-            // Check the exception where _landId = 0
-            if (treeData[_seedId].landId == _landId && _isPlanted(treeData[_seedId])) return _seedId;
-        }
-        // It should only happen when there is seed planted on this land
-        return type(uint16).max;
-    }
-
     // Check if the seed is planted to protect against landId = 0 default value that is a valid Land value (0,0)
     function _isPlanted(TreeData storage _seed) internal view returns (bool) {
         // lastSnapshotedAt is first initialized with the `_initializeState()`, when we plant the seed
         return _seed.lastSnapshotedAt != 0;
     }
+
+    // Check if the seed is adult
+    function _isAdult(uint256 _seedId) internal view returns (bool) {
+        return state(_seedId) == TreeState.ADULT;
+    }
+
+    /// Check if the land is already taken
+    function _isLandTaken(uint16 _landId) internal view returns (bool) {
+        return seedByLandId(_landId) != type(uint256).max;
+    }
+
+    // FIXME: 🚨 ONLY FOR DEBUGGING PURPOSES. TO REMOVE BEFORE DEPLOYMENT 🚨 
+    function _debugForceSetMass(uint256 _seedId, uint256 _treeMass) external {
+        treeData[_seedId].lastMass = _treeMass;
+    }
+
+
+    //struct GameState {
+    //    address owner;
+
+    //}
+
+    ///// Calculate the entire game state
+    //function gameState() external view returns (GameState[1024] memory) {
+
+    //}
 
     /* --- Seed trait functions --- */
 
