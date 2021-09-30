@@ -314,6 +314,11 @@ contract Seed is ERC721, ERC721Enumerable {
         return _seed.lastMass + _growthFactor(_seed) * (_hydratedTilNow - _seed.lastSnapshotedAt) / 3600;
     }
 
+    // FIXME: 🚨 ONLY FOR DEBUGGING PURPOSES. TO REMOVE BEFORE DEPLOYMENT 🚨 
+    function _debugForceSetMass(uint256 _seedId, uint256 _treeMass) external {
+        treeData[_seedId].lastMass = _treeMass;
+    }
+
     /// Calculate the tree's water level
     function waterLevel(uint256 _seedId) public view returns (int256) {
         uint8 _treeWaterUseFactor = _waterUseFactor(treeData[_seedId]);
