@@ -65,6 +65,17 @@ contract Seed is ERC721, ERC721Enumerable {
         DEAD
     }
 
+    enum SeedSpecies {
+        LINGO,
+        MICAN,
+        NASU,
+        ABO,
+        CHERI,
+        UME,
+        BANANA,
+        COCO
+    }
+
     struct TreeData {
         // Seed properties
         /**
@@ -104,7 +115,7 @@ contract Seed is ERC721, ERC721Enumerable {
         address landOwner;
         uint8 landType;
         uint256 seedId;
-        uint8 seedSpecies;
+        SeedSpecies seedSpecies;
         TreeState seedState;
         uint256 unharvestedFruits;
     }
@@ -435,7 +446,7 @@ contract Seed is ERC721, ERC721Enumerable {
 
     /* --- Seed trait functions --- */
 
-    function traits(uint256 _seedId) external view returns (uint8 species, uint8 growthFactor, uint8 waterUseFactor, uint8 fertilizerUseFactor, uint8 fruitGrowthFactor) {
+    function traits(uint256 _seedId) external view returns (SeedSpecies species, uint8 growthFactor, uint8 waterUseFactor, uint8 fertilizerUseFactor, uint8 fruitGrowthFactor) {
         TreeData storage _seed = treeData[_seedId];
         return (_species(_seed), _growthFactor(_seed), _waterUseFactor(_seed), _fertilizerUseFactor(_seed), _fruitGrowthFactor(_seed));
     }
@@ -459,8 +470,8 @@ contract Seed is ERC721, ERC721Enumerable {
     }
 
     // Get the tree's species
-    function _species(TreeData storage _seed) internal view returns (uint8) {
-        return _traitFromDNA(_seed.dna, _speciesLastBitPosition, _speciesMask);
+    function _species(TreeData storage _seed) internal view returns (SeedSpecies) {
+        return SeedSpecies(_traitFromDNA(_seed.dna, _speciesLastBitPosition, _speciesMask));
     }
 
     // Calculate the tree's growth factor
