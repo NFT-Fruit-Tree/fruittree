@@ -39,8 +39,20 @@ function mass2stage(m) {
   }
   return TreeStages[Math.floor(m / MassPerStage)];
 }
+const SpeciesNames = ['Lingo', 'Mican', 'Nasu', 'Abo', 'Cheri', 'Ume', 'Banana', 'Coco'];
+const SpeciesBabyImgOffsets = { 
+    // [x * 96, y * 128]
+    'Lingo': [0, 3],
+    'Mican': [1, 3],
+    'Nasu':  [4, 3],
+    'Abo':   [6, 3],
+    'Cheri': [3, 3],
+    'Ume':   [7, 3],
+    'Banana':[1, 11],
+    'Coco':  [0, 11],
+    '_ERROR_': [0, 0],
+};
 
-const SpeciesNames = ['Apple', 'Citrus', 'Cocos', 'Banana', 'Pine', 'XXX', 'YYY', 'Enneftree'];
 function species2name(speciesIdx) {
   return SpeciesNames[speciesIdx];
 }
@@ -84,21 +96,24 @@ function TreeCardInner({
   // returns (uint8 species, uint8 growthFactor, uint8 waterUseFactor, uint8 fertilizerUseFactor, uint8 fruitGrowthFactor) 
   const treeTraits = useContractReader(readContracts, "Seed", "traits", [seedId]);
   const treeState = useContractReader(readContracts, "Seed", "state", [seedId]);
+  console.log('state: ', treeState);
   const landId = useContractReader(readContracts, "Seed", "landId", [seedId]);
   const species = treeTraits ? treeTraits[0] : null;
-  console.log('species: ', species)
-  const speciesName = species2name(species);
+  const speciesName = species === null ? '_ERROR_' : species2name(species);
+  console.log('species: ', speciesName)
+  const posX = SpeciesBabyImgOffsets[speciesName][0] * 96;
+  const stageOffY = (treeState - 1) * 128; // only applicable if not SEED and DEAD
+  const posY = SpeciesBabyImgOffsets[speciesName][1] * 128 - stageOffY;
+  const treeStyle = {objectFit: 'none', objectPosition: `-${posX}px -${posY}px`, width: 96, height: 128, position: 'absolute', top: -64};
   const mass = useContractReader(readContracts, "Seed", "mass", [seedId]);
   const waterLevel = useContractReader(readContracts, "Seed", "waterLevel", [seedId]);
   const fruitMass = useContractReader(readContracts, "Seed", "fruitMass", [seedId]);
   const fruitCount = Math.floor((fruitMass ? fruitMass.toNumber() : 0) / FRUIT_PER_MASS);
 
-  const treeStyle = treeStyleCocos; // [treeStyle1, treeStyle2, treeStyle3][species % 3]; // XXX just show some variation
-
   return (
     <Card>
           <div style={{marginTop: 100, position: 'relative'}}>
-            <img src={fruitTreePng} style={treeStyle} />
+            { !treeState ? '' : (<img src={fruitTreePng} style={treeStyle} />) }
             <span className="gnd gnd-tilled-in-grass"><span id={"tree-1-" + seedId}></span></span>
           </div>
           <h3>Stats</h3>
@@ -109,6 +124,7 @@ function TreeCardInner({
              (<div> Land: Unplanted </div>) : 
              (<div> Land X/Y: { landId % 32 } / { Math.floor(landId / 32) }</div>)
           }
+          <div> Mass: { mass ? mass.toNumber() : 0 }</div>
           <div> Water Level: { waterLevel ? waterLevel.toString() : 'N/A' } </div>
           <div> Stage: { mass2stage(mass ? mass.toNumber() : 0) }</div>
           <div> Fruit: { fruitCount } </div>
