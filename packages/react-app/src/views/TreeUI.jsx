@@ -429,7 +429,12 @@ function TreeMapSingle({
   writeContracts,
 }) {
   const landType = useContractReader(readContracts, "Land", "landTypes", [landId]);
-  const seedId = 'foo'; // useContractReader(readContracts, "Seed", "seedIdByLandId", [landId]);
+  const seedId = useContractReader(readContracts, "Seed", "seedByLandId", [landId]);
+  /*
+  // returns (uint8 species, uint8 growthFactor, uint8 waterUseFactor, uint8 fertilizerUseFactor, uint8 fruitGrowthFactor) 
+  const treeTraits = useContractReader(readContracts, "Seed", "traits", [seedId]);
+  const treeState = useContractReader(readContracts, "Seed", "state", [seedId]);
+  */
   const landOwner = useContractReader(readContracts, "Land", "ownerOf", [landId]);
   const mapCellStyle = {
     display: 'inline-block',
@@ -440,12 +445,19 @@ function TreeMapSingle({
     borderRadius: '10px',
     overflow: 'hidden',
   };
+  //console.log(treeState);
+  //console.log(treeTraits);
 
   return (
     <div style={mapCellStyle} >
       <div>Land { landId }</div>
-      <div>Type { landType ? landType.toString() : '...' }</div>
+      <div>Land Type { landType ? landType.toString() : '...' }</div>
       <div>Owner { landOwner ? utils.getAddress(landOwner) : '...' }</div>
+      <div>Tree { seedId ? seedId.toString() : '...' }</div>
+      {/*
+      <div>Tree State: { treeState }</div>
+      <div>Species: { treeTraits ? treeTraits[0] : '...'}</div>
+      */}
     </div>
   )
 }
