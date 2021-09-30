@@ -1,6 +1,6 @@
 import { SyncOutlined } from "@ant-design/icons";
 import { utils } from "ethers";
-import { Button, Card, DatePicker, Divider, Input, List, Progress, Slider, Spin, Switch } from "antd";
+import { Button, Card, Collapse, DatePicker, Divider, Input, List, Progress, Slider, Spin, Switch } from "antd";
 import React, { useState } from "react";
 import { Address, Balance } from "../components";
 
@@ -23,6 +23,8 @@ import {
 } from "eth-hooks/events/useEventListener";
 import { useContractConfig } from "./hooks"
 */
+
+const { Panel } = Collapse;
 
 const ST_SEED = 'Seed'; // 0;
 const ST_ADULT = 'Adult'; // 5;
@@ -130,7 +132,7 @@ function BuySeed({
   const firstLandId = useContractReader(readContracts, "Land", "tokenOfOwnerByIndex", [address, 0]);
   const landBalance = useContractReader(readContracts, "Land", "balanceOf", [address]);
   return (
-    <div>
+    <Collapse><Panel header="Tree Builder" >
       <h2>Steps to Make a Tree</h2>
       <ol>
         <li>
@@ -413,7 +415,7 @@ function BuySeed({
         </li>
       </ol>
       
-    </div>
+    </Panel></Collapse>
   )
 }
 export default function TreeUI({
