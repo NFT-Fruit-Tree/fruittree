@@ -27,18 +27,18 @@ import { useContractConfig } from "./hooks"
 const ST_SEED = 'Seed'; // 0;
 const ST_ADULT = 'Adult'; // 5;
 function mass2stage(m) {
-	if (m < 100) return ST_SEEd;
-	return ST_ADULT;
+  if (m < 100) return ST_SEEd;
+  return ST_ADULT;
 }
 
 const speciesNames = ['Apple', 'Citrus', 'Cocos', 'Banana', 'Pine', 'XXX', 'YYY', 'Enneftree'];
 function species2name(speciesIdx) {
-	return speciesNames[speciesIdx];
+  return speciesNames[speciesIdx];
 }
 
 //export default
 function TreeCard({
-	idx,
+  idx,
   address,
   mainnetProvider,
   localProvider,
@@ -51,30 +51,30 @@ function TreeCard({
   const treeStyle3 = {objectFit: 'none', objectPosition: '0 -384px', width: 96, height: 128, position: 'absolute', top: -48};
   const treeStyleCocos = {objectFit: 'none', objectPosition: '0 -1024px', width: 96, height: 128, position: 'absolute', top: -48};
 console.log(address, idx);
-	const seedIdObj = useContractReader(readContracts, "Seed", "tokenOfOwnerByIndex", [address, idx]);
-	const seedId = seedIdObj ? seedIdObj.toNumber() : -1;
-	const species = 7; // TODO useContractReader(readContracts, "Seed", "species", [seedId]);
-	const speciesName = species2name(species);
-	const mass = 100; // TODO useContractReader(readContracts, "Seed", "mass", [seedId]);
-	const fruitMass = 100; // TODO useContractReader(readContracts, "Seed", "mass", [seedId]);
-	const fruitCount = Math.floor(fruitMass / 10);
+  const seedIdObj = useContractReader(readContracts, "Seed", "tokenOfOwnerByIndex", [address, idx]);
+  const seedId = seedIdObj ? seedIdObj.toNumber() : -1;
+  const species = 7; // TODO useContractReader(readContracts, "Seed", "species", [seedId]);
+  const speciesName = species2name(species);
+  const mass = 100; // TODO useContractReader(readContracts, "Seed", "mass", [seedId]);
+  const fruitMass = 100; // TODO useContractReader(readContracts, "Seed", "mass", [seedId]);
+  const fruitCount = Math.floor(fruitMass / 10);
 
-	const treeStyle = treeStyleCocos; // [treeStyle1, treeStyle2, treeStyle3][species % 3]; // XXX just show some variation
+  const treeStyle = treeStyleCocos; // [treeStyle1, treeStyle2, treeStyle3][species % 3]; // XXX just show some variation
 
-	return (
-		<Card>
+  return (
+    <Card>
           <div style={{marginTop: 100, position: 'relative'}}>
             <img src={fruitTreePng} style={treeStyle} />
             <span className="gnd gnd-tilled-in-grass"><span id={"tree-1-" + idx}></span></span>
           </div>
-					<h3>Stats</h3>
-					<div> ID: { seedId }</div>
-					<div> Species: { speciesName }</div>
-					<div> X: { seedId % 32 } </div>
-					<div> Y: { Math.floor(seedId / 32) }</div>
-					<div> Health: 60% TODO Thirst?</div>
-					<div> Stage: { mass2stage(mass) }</div>
-					<div> Fruit: { fruitCount } </div>
+          <h3>Stats</h3>
+          <div> ID: { seedId }</div>
+          <div> Species: { speciesName }</div>
+          <div> X: { seedId % 32 } </div>
+          <div> Y: { Math.floor(seedId / 32) }</div>
+          <div> Health: 60% TODO Thirst?</div>
+          <div> Stage: { mass2stage(mass) }</div>
+          <div> Fruit: { fruitCount } </div>
           <Button
             style={{ marginTop: 8 }}
             onClick={async () => {
@@ -102,9 +102,9 @@ console.log(address, idx);
           <Button> _Fertilize! </Button>
           <Button> _Harvest! </Button>
           <Button> _Burn! </Button>
-					<Divider />
-		</Card>
-	);
+          <Divider />
+    </Card>
+  );
 }
 
 function BuySeed({
@@ -117,24 +117,24 @@ function BuySeed({
   writeContracts,
 }) {
   const [newCurrencyApproveAmount, setNewCurrencyApproveAmount] = useState(utils.parseUnits('0.1').toString());
-	const currencyBalance = useContractReader(readContracts, "Currency", "balanceOf", [address]);
-	const fruitPrice = useContractReader(readContracts, "Fruit", "price");
-	const fruitBalance = useContractReader(readContracts, "Fruit", "balanceOf", [address]);
+  const currencyBalance = useContractReader(readContracts, "Currency", "balanceOf", [address]);
+  const fruitPrice = useContractReader(readContracts, "Fruit", "price");
+  const fruitBalance = useContractReader(readContracts, "Fruit", "balanceOf", [address]);
   const [newFruitApproveAmount, setNewFruitApproveAmount] = useState(utils.parseUnits('100').toString());
   const [newFruitBuyAmount, setNewFruitBuyAmount] = useState("1");
-	const seedBalance = useContractReader(readContracts, "Seed", "balanceOf", [address]);
-	const landPrice = useContractReader(readContracts, "Land", "price");
+  const seedBalance = useContractReader(readContracts, "Seed", "balanceOf", [address]);
+  const landPrice = useContractReader(readContracts, "Land", "price");
   const [newLandId, setNewLandId] = useState("0");
   const [newSeedId, setNewSeedId] = useState("0");
-	const firstSeedId = useContractReader(readContracts, "Seed", "tokenOfOwnerByIndex", [address, 0]);
-	const firstLandId = useContractReader(readContracts, "Land", "tokenOfOwnerByIndex", [address, 0]);
-	const landBalance = useContractReader(readContracts, "Land", "balanceOf", [address]);
-	return (
-		<div>
-			<h2>Steps to Make a Tree</h2>
-			<ol>
-				<li>
-					<h3>Mint yourself free Currency</h3>
+  const firstSeedId = useContractReader(readContracts, "Seed", "tokenOfOwnerByIndex", [address, 0]);
+  const firstLandId = useContractReader(readContracts, "Land", "tokenOfOwnerByIndex", [address, 0]);
+  const landBalance = useContractReader(readContracts, "Land", "balanceOf", [address]);
+  return (
+    <div>
+      <h2>Steps to Make a Tree</h2>
+      <ol>
+        <li>
+          <h3>Mint yourself free Currency</h3>
           <Button
             style={{ marginTop: 8 }}
             onClick={async () => {
@@ -159,15 +159,15 @@ function BuySeed({
           >
               Give me free money!
           </Button>
-				</li>
-				<li>
-				<h3>Approve Currency for Fruit</h3>
-					Your Currency balance: { currencyBalance ? `${currencyBalance.toString()} (${utils.formatEther(currencyBalance)})` : '...' }
+        </li>
+        <li>
+        <h3>Approve Currency for Fruit</h3>
+          Your Currency balance: { currencyBalance ? `${currencyBalance.toString()} (${utils.formatEther(currencyBalance)})` : '...' }
           <Input
             onChange={e => {
               setNewCurrencyApproveAmount(e.target.value);
             }}
-						value={newCurrencyApproveAmount}
+            value={newCurrencyApproveAmount}
           />
           <Button
             style={{ marginTop: 8 }}
@@ -193,16 +193,16 @@ function BuySeed({
           >
               Approve Currency for Fruit!
           </Button>
-				</li>
-				<li>
-				<h3>Buy Fruit </h3>
-					<div>Fruit price in currency: { fruitPrice ? fruitPrice.toString() : '...' }</div>
-					<div>Amount to buy</div>
+        </li>
+        <li>
+        <h3>Buy Fruit </h3>
+          <div>Fruit price in currency: { fruitPrice ? fruitPrice.toString() : '...' }</div>
+          <div>Amount to buy</div>
           <Input
             onChange={e => {
               setNewFruitBuyAmount(e.target.value);
             }}
-						value={newFruitBuyAmount}
+            value={newFruitBuyAmount}
           />
           <Button
             style={{ marginTop: 8 }}
@@ -228,15 +228,15 @@ function BuySeed({
           >
               Buy Fruits!
           </Button>
-				</li>
-				<li>
-				<h3>Approve Fruit for Seed</h3>
-					Your Fruit balance: { fruitBalance ? `${fruitBalance.toString()} (${utils.formatEther(fruitBalance)})` : '...' }
+        </li>
+        <li>
+        <h3>Approve Fruit for Seed</h3>
+          Your Fruit balance: { fruitBalance ? `${fruitBalance.toString()} (${utils.formatEther(fruitBalance)})` : '...' }
           <Input
             onChange={e => {
               setNewFruitApproveAmount(e.target.value);
             }}
-						value={newFruitApproveAmount}
+            value={newFruitApproveAmount}
           />
           <Button
             style={{ marginTop: 8 }}
@@ -262,14 +262,14 @@ function BuySeed({
           >
               Approve Fruit for Seed
           </Button>
-				</li>
-				<li>
-				<h3>Buy Seed </h3>
-					<div>Seed price hard-coded at <Input disabled={true} value='10**17' /></div>
-					<div>Amount to buy</div>
+        </li>
+        <li>
+        <h3>Buy Seed </h3>
+          <div>Seed price hard-coded at <Input disabled={true} value='10**17' /></div>
+          <div>Amount to buy</div>
           <Input
-						disabled={true}
-						value={1}
+            disabled={true}
+            value={1}
           />
           <Button
             style={{ marginTop: 8 }}
@@ -295,16 +295,16 @@ function BuySeed({
           >
               Buy 1 Seed!
           </Button>
-					<div>Your Seed balance: { seedBalance ? seedBalance.toString() : '...' }</div>
-				</li>
-				<li>
-				<h3>Approve Currency for Land</h3>
-					Your Currency balance: { currencyBalance ? `${currencyBalance.toString()} (${utils.formatEther(currencyBalance)})` : '...' }
+          <div>Your Seed balance: { seedBalance ? seedBalance.toString() : '...' }</div>
+        </li>
+        <li>
+        <h3>Approve Currency for Land</h3>
+          Your Currency balance: { currencyBalance ? `${currencyBalance.toString()} (${utils.formatEther(currencyBalance)})` : '...' }
           <Input
             onChange={e => {
               setNewCurrencyApproveAmount(e.target.value);
             }}
-						value={newCurrencyApproveAmount}
+            value={newCurrencyApproveAmount}
           /> (duplicated above)
           <Button
             style={{ marginTop: 8 }}
@@ -330,16 +330,16 @@ function BuySeed({
           >
               Approve Currency for Land!
           </Button>
-				</li>
-				<li>
-				<h3>Buy Land </h3>
-					<div>Current Land price: { landPrice ? landPrice.toString() + ' = ' + utils.formatEther(landPrice) : '...' }</div>
-					<div>Land ID you want to buy</div>
+        </li>
+        <li>
+        <h3>Buy Land </h3>
+          <div>Current Land price: { landPrice ? landPrice.toString() + ' = ' + utils.formatEther(landPrice) : '...' }</div>
+          <div>Land ID you want to buy</div>
           <Input
             onChange={e => {
               setNewLandId(e.target.value);
             }}
-						value={newLandId}
+            value={newLandId}
           />
           <Button
             style={{ marginTop: 8 }}
@@ -365,26 +365,26 @@ function BuySeed({
           >
               Buy that Land!
           </Button>
-					<div>Your Land balance: { landBalance ? landBalance.toString() : '...' }</div>
-				</li>
-				<li>
-				<h3>Plant a Seed on a Land </h3>
-					<div>Your Seed balance: { seedBalance ? seedBalance.toString() : '...' }</div>
-					<div>Your first SeedId if you have one: { firstSeedId ? firstSeedId.toString() : '' }</div>
-					<div>Your first LandId if you have one: { firstLandId ? firstLandId.toString() : '' }</div>
-					<div>Seed ID you want to plant </div>
+          <div>Your Land balance: { landBalance ? landBalance.toString() : '...' }</div>
+        </li>
+        <li>
+        <h3>Plant a Seed on a Land </h3>
+          <div>Your Seed balance: { seedBalance ? seedBalance.toString() : '...' }</div>
+          <div>Your first SeedId if you have one: { firstSeedId ? firstSeedId.toString() : '' }</div>
+          <div>Your first LandId if you have one: { firstLandId ? firstLandId.toString() : '' }</div>
+          <div>Seed ID you want to plant </div>
           <Input
             onChange={e => {
               setNewSeedId(e.target.value);
             }}
-						value={newSeedId}
+            value={newSeedId}
           />
-					<div>Land ID you want to plant seed on</div>
+          <div>Land ID you want to plant seed on</div>
           <Input
             onChange={e => {
               setNewLandId(e.target.value);
             }}
-						value={newLandId}
+            value={newLandId}
           />
           <Button
             style={{ marginTop: 8 }}
@@ -410,11 +410,11 @@ function BuySeed({
           >
               Plant Seed on Land!
           </Button>
-				</li>
-			</ol>
-			
-		</div>
-	)
+        </li>
+      </ol>
+      
+    </div>
+  )
 }
 export default function TreeUI({
   purpose,
@@ -430,10 +430,10 @@ export default function TreeUI({
 }) {
   const [newPurpose, setNewPurpose] = useState("loading...");
 
-	const landSupply = useContractReader(readContracts, "Land", "totalSupply");
-	const fruitTotalSupply = useContractReader(readContracts, "Fruit", "totalSupply");
-	const fruitBalance = useContractReader(readContracts, "Fruit", "balanceOf", [address]);
-	const seedBalance = useContractReader(readContracts, "Seed", "balanceOf", [address]);
+  const landSupply = useContractReader(readContracts, "Land", "totalSupply");
+  const fruitTotalSupply = useContractReader(readContracts, "Fruit", "totalSupply");
+  const fruitBalance = useContractReader(readContracts, "Fruit", "balanceOf", [address]);
+  const seedBalance = useContractReader(readContracts, "Seed", "balanceOf", [address]);
 /*
 
 Show My Balances of: Seeds (Trees), Land Plots, Fruits
@@ -449,9 +449,9 @@ For each Seed, show:
 - don't show factors, let user figure them out
 
 */
-	// iterate over all tokenOfOwnerByIndex from 0 to balanceOf
-	// XXX quick hack - load max 5 trees
-	const seedTokensOfOwnerByIndex = [...Array(Math.min(5, seedBalance ? seedBalance.toNumber() : 0)).keys()];
+  // iterate over all tokenOfOwnerByIndex from 0 to balanceOf
+  // XXX quick hack - load max 5 trees
+  const seedTokensOfOwnerByIndex = [...Array(Math.min(5, seedBalance ? seedBalance.toNumber() : 0)).keys()];
 
   const treeStyle1 = {objectFit: 'none', objectPosition: '0 -128px', width: 96, height: 128, position: 'absolute', top: -48};
   const treeStyle2 = {objectFit: 'none', objectPosition: '0 -256px', width: 96, height: 128, position: 'absolute', top: -48};
@@ -464,7 +464,7 @@ For each Seed, show:
       <div style={{ border: "1px solid #cccccc", padding: 16, margin: "auto", marginTop: 64 }}>
         <h2>Tree UI:</h2>
         <Divider />
-				<BuySeed 
+        <BuySeed 
               address={address}
               mainnetProvider={mainnetProvider}
               localProvider={localProvider}
@@ -472,32 +472,32 @@ For each Seed, show:
               tx={tx}
               writeContracts={writeContracts}
               readContracts={readContracts}
-				/>
+        />
         <Divider />
         {/* use utils.formatEther to display a BigNumber: */}
-				<h2>SEED Balance: 1 planted, 2 unplanted TODO traverse my seed tokens and count which have seed stage</h2>
-				XXX but TreeCard component loads tree data as component state without bubbling up...
-				<h2>LAND Balance (temp showing totalSupply): {landSupply ? landSupply.toString() : '...'}</h2>
+        <h2>SEED Balance: 1 planted, 2 unplanted TODO traverse my seed tokens and count which have seed stage</h2>
+        XXX but TreeCard component loads tree data as component state without bubbling up...
+        <h2>LAND Balance (temp showing totalSupply): {landSupply ? landSupply.toString() : '...'}</h2>
         <h2>FRUIT Balance: {fruitBalance ? utils.formatEther(fruitBalance) : "..."} of totalSupply {fruitTotalSupply ? utils.formatEther(fruitTotalSupply) : '...'}</h2>
         <Divider />
         <Card>
           <h1>Your Property: Iterate over Seed tokens, then empty Land</h1>
 
-					{
-					  seedTokensOfOwnerByIndex.map(idx => <TreeCard key={'treecard-'+idx}
-							idx={idx}
-							address={address}
-							readContracts={readContracts}
-							writeContracts={writeContracts}
-							tx={tx}
-						 />
-					  )
-				  }
-				</Card>
-      	<Divider />
-				<Card>
-        	<h2>Tree Map:</h2>
-					<div>Choose LAND to buy or plant a seed</div>
+          {
+            seedTokensOfOwnerByIndex.map(idx => <TreeCard key={'treecard-'+idx}
+              idx={idx}
+              address={address}
+              readContracts={readContracts}
+              writeContracts={writeContracts}
+              tx={tx}
+             />
+            )
+          }
+        </Card>
+        <Divider />
+        <Card>
+          <h2>Tree Map:</h2>
+          <div>Choose LAND to buy or plant a seed</div>
           <div style={{position: 'relative'}}>
             <span className="gnd gnd-tilled-in-grass"><span id="tree-1-1"></span></span>
             <img src={fruitTreePng} style={treeStyle1} />
@@ -516,7 +516,7 @@ For each Seed, show:
             <span className="gnd gnd-tilled-in-grass"></span>
             <span className="gnd gnd-tilled-in-grass"></span>
           </div>
-				</Card>
+        </Card>
         <Divider />
         Your Address:
         <Address address={address} ensProvider={mainnetProvider} fontSize={16} />
