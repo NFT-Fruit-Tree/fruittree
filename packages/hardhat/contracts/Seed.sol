@@ -99,6 +99,16 @@ contract Seed is ERC721, ERC721Enumerable {
         uint256 lastFruitMass; // last unharvested fruits mass at the last fertilizing
     }
 
+    // A land's game state
+    struct LandState {
+        address landOwner;
+        uint8 landType;
+        uint256 seedId;
+        uint8 seedSpecies;
+        TreeState seedState;
+        uint256 unharvestedFruits;
+    }
+
     // Mapping from a Seed token Id to its TreeData
     mapping (uint256 => TreeData) public treeData;
     // Mapping from a land id to a seed id
@@ -401,32 +411,27 @@ contract Seed is ERC721, ERC721Enumerable {
         treeData[_seedId].lastMass = _treeMass;
     }
 
-// A land's game state
-struct LandState {
-    address landOwner;
-    uint8 landType;
-    uint256 seedId;
-    uint8 seedSpecies;
-    TreeState seedState;
-    uint256 unharvestedFruits;
-}
-
-/// Calculate the entire game state
-function gameState() external view returns (LandState[1024] memory _landState) {
-    // Loop over every lands
-    for (uint16 i = 0; i < land.totalSupply(); i++) {
-        // Get the land's owner
-        _landState[i].landOwner = land.ownerOf(i);
-        // Get the land's type
-        _landState[i].landType = land.landTypes(i);
-        // Get the land's seed id
-        uint256 _seedId = seedByLandId(i);
-        _landState[i].seedId = _seedId;
-        _landState[i].seedSpecies = _species(treeData[_seedId]);
-        _landState[i].seedState = state(_seedId);
-        _landState[i].unharvestedFruits = unharvestedFruitCount(_seedId);
+    // FIXME: 🚨 ONLY FOR DEBUGGING PURPOSES. TO REMOVE BEFORE DEPLOYMENT 🚨 
+    function _debugForceSetFruitMass(uint256 _seedId, uint256 _treeFruitMass) external {
+        treeData[_seedId].lastFruitMass = _treeFruitMass;
     }
-}
+
+    /// Calculate the entire game state
+    function gameState() external view returns (LandState[1024] memory _landState) {
+        // Loop over every lands
+        for (uint16 i = 0; i < land.totalSupply(); i++) {
+            // Get the land's owner
+            _landState[i].landOwner = land.ownerOf(i);
+            // Get the land's type
+            _landState[i].landType = land.landTypes(i);
+            // Get the land's seed id
+            uint256 _seedId = seedByLandId(i);
+            _landState[i].seedId = _seedId;
+            _landState[i].seedSpecies = _species(treeData[_seedId]);
+            _landState[i].seedState = state(_seedId);
+            _landState[i].unharvestedFruits = unharvestedFruitCount(_seedId);
+        }
+    }
 
     /* --- Seed trait functions --- */
 
