@@ -50,6 +50,7 @@ cache
 artifacts
 
 # misc
+*.swp
 .DS_Store
 .env*
 
