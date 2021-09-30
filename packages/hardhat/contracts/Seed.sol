@@ -66,7 +66,7 @@ contract Seed is ERC721, ERC721Enumerable {
     }
 
     struct TreeData {
-        // Seed traits
+        // Seed properties
         /**
          * @dev DNA = 32 bits (e.g. 110_0101_011_101_0001_1110_010_101_00_000)
          * breakdown of bits in sequence:
@@ -88,7 +88,8 @@ contract Seed is ERC721, ERC721Enumerable {
          * 3 : extraCosmetic
          */
         uint32 dna;
-        // Tree traits
+        // Tree properties
+        uint16 landId; // id of the tree's land
         uint256 adultAt; // timestamp when the tree became adult
         uint256 lastSnapshotedAt; // timestamp of the last state snapshot
         uint256 lastFertilizedAt; // timestamp. implies that fertilizedAmount = 100 @ lastFertilized
@@ -96,7 +97,6 @@ contract Seed is ERC721, ERC721Enumerable {
         uint256 lastHarvestedAt; // timestamp.
         uint256 lastMass; // last calculated tree mass at the last watering
         uint256 lastFruitMass; // last unharvested fruits mass at the last fertilizing
-        uint256 landId; // id of the tree's land
     }
 
     // Mapping from a Seed token Id to its TreeData
@@ -104,12 +104,14 @@ contract Seed is ERC721, ERC721Enumerable {
     // Mapping from a block number to the number of minted seeds in this block
     mapping (uint256 => uint8) mintedTokensPerBlock;
 
-    event Planted(uint256 indexed seedId, uint256 indexed landId);
+    event Planted(uint256 indexed seedId, uint16 indexed landId);
     event Watered(uint256 indexed seedId);
     event Fertilized(uint256 indexed seedId, uint256 fertilizerAmount);
     event Harvested(uint256 indexed seedId, uint256 fruitAmount);
     /// The seed `id` is already planted
     error AlreadyPlantedError();
+    /// No planted seeds
+    error NoPlantedSeedError();
     /// The state `state` is invalid
     error InvalidStateError(TreeState state);
     /// You cannot mint another seed this block
@@ -152,11 +154,11 @@ contract Seed is ERC721, ERC721Enumerable {
      * Plant one of `your` `seeds` into one of `your` `lands`.
      * @dev Create a soft link from a Seed token to a Land token. The Seed token remains controlled by its owner, unlike a staking action.
      */
-    function plant(uint256 _seedId, uint256 _landId) external {
+    function plant(uint256 _seedId, uint16 _landId) external {
         // Check if the token exists and if the sender owns the seed AND the land
         if (ownerOf(_seedId) != msg.sender || land.ownerOf(_landId) != msg.sender) revert UnauthorizedError();
         // Check if the seed is not already planted
-        if (treeData[_seedId].landId != 0) revert AlreadyPlantedError();
+        if (_isPlanted(treeData[_seedId])) revert AlreadyPlantedError();
         // Initialize the tree data
         _initializeState(_seedId, _landId);
         // Event
@@ -224,12 +226,11 @@ contract Seed is ERC721, ERC721Enumerable {
      * Move one of `your` `alive` `trees` to another one of `your` `land`.
      * @dev Similar to {plant}
      */
-    function move(uint256 _seedId, uint256 _newLandId) external {
+    function move(uint256 _seedId, uint16 _newLandId) external {
         // Check if the token exists, if the sender owns the seed. Same thing for the new land
         if (ownerOf(_seedId) != msg.sender || land.ownerOf(_newLandId) != msg.sender) revert UnauthorizedError();
         // Check if it is planted
-        TreeState treeState = state(_seedId);
-        if (treeData[_seedId].landId == 0) revert InvalidStateError(treeState);
+        if (!_isPlanted(treeData[_seedId])) revert NoPlantedSeedError();
         // Update the tree state
         _updateState(_seedId);
         treeData[_seedId].landId = _newLandId;
@@ -274,7 +275,7 @@ contract Seed is ERC721, ERC721Enumerable {
     }
 
     // Initialize the seed's state
-    function _initializeState(uint256 _seedId, uint256 _landId) internal {
+    function _initializeState(uint256 _seedId, uint16 _landId) internal {
         TreeData storage _seed = treeData[_seedId];
         // Required for state calculations
         _seed.lastSnapshotedAt = block.timestamp;
@@ -324,10 +325,37 @@ contract Seed is ERC721, ERC721Enumerable {
         return _seed.lastFruitMass + _fruitGrowthFactor(_seed) * (_fertilizedTilNow - _seed.lastSnapshotedAt) / 3600;
     }
 
+    /// Calculate how many fruits you can harvest on a tree
     function unharvestedFruitCount(uint256 _seedId) public view returns (uint256) {
         // Calculate the fruit mass
         uint256 _treeFruitMass = _fruitMass(treeData[_seedId]);
         return _treeFruitMass / wholeFruitMass;
+    }
+
+    /// Get the tree's land id
+    function landId(uint256 _seedId) external view returns (uint16) {
+        if (!_isPlanted(treeData[_seedId])) revert NoPlantedSeedError();
+        return treeData[_seedId].landId;
+    }
+
+    /// Get the land's tree id
+    function seedByLandId(uint16 _landId) external view returns (uint256) {
+        // Check if the land id is valid
+        land.idToCoordinates(_landId);
+        // Loop over all tokens to find the one on this land
+        for (uint256 i = 0; i < totalSupply(); i++) {
+            uint256 _seedId = tokenByIndex(i);
+            // Check the exception where _landId = 0
+            if (treeData[_seedId].landId == _landId && _isPlanted(treeData[_seedId])) return _seedId;
+        }
+        // It should only happen when there is seed planted on this land
+        revert NoPlantedSeedError();
+    }
+
+    // Check if the seed is planted to protect against landId = 0 default value that is a valid Land value (0,0)
+    function _isPlanted(TreeData storage _seed) internal view returns (bool) {
+        // lastSnapshotedAt is first initialized with the `_initializeState()`, when we plant the seed
+        return _seed.lastSnapshotedAt != 0;
     }
 
     /* --- Seed trait functions --- */
@@ -335,6 +363,11 @@ contract Seed is ERC721, ERC721Enumerable {
     function traits(uint256 _seedId) external view returns (uint8 species, uint8 growthFactor, uint8 waterUseFactor, uint8 fertilizerUseFactor, uint8 fruitGrowthFactor) {
         TreeData storage _seed = treeData[_seedId];
         return (_species(_seed), _growthFactor(_seed), _waterUseFactor(_seed), _fertilizerUseFactor(_seed), _fruitGrowthFactor(_seed));
+    }
+
+    /// Get the seed's dna
+    function dna(uint256 _seedId) external view returns (uint32) {
+        return treeData[_seedId].dna;
     }
 
     /**
@@ -350,7 +383,7 @@ contract Seed is ERC721, ERC721Enumerable {
         return uint8(_dna >> lastBitPosition) & bitsMask;
     }
 
-    // Get the species of a seed from its DNA
+    // Get the tree's species
     function _species(TreeData storage _seed) internal view returns (uint8) {
         return _traitFromDNA(_seed.dna, _speciesLastBitPosition, _speciesMask);
     }

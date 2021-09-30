@@ -32,7 +32,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
     });
 
     console.log("📢 Premint started...");
-    const step = 80;
+    const step = 50;
     for (let i = 0; i < Math.min(i + step, 1024); i += step) {
         await land.premint(i, Math.min(i + step - 1, 1024));
     }
