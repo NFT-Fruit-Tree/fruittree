@@ -109,7 +109,7 @@ console.log(address, idx);
   );
 }
 
-function BuySeed({
+function TreeBuilder({
   address,
   mainnetProvider,
   localProvider,
@@ -466,7 +466,7 @@ For each Seed, show:
       <div style={{ border: "1px solid #cccccc", padding: 16, margin: "auto", marginTop: 64 }}>
         <h2>Tree UI:</h2>
         <Divider />
-        <BuySeed 
+        <TreeBuilder 
               address={address}
               mainnetProvider={mainnetProvider}
               localProvider={localProvider}
