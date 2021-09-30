@@ -26,21 +26,50 @@ import { useContractConfig } from "./hooks"
 
 const { Panel } = Collapse;
 
-const ST_SEED = 'Seed'; // 0;
-const ST_ADULT = 'Adult'; // 5;
+const TreeStages = ['SEED', 'SPROUT', 'BABY', 'TEENAGE', 'ADULT', 'DEAD']
+const MassPerStage = 50; // make same as in Seed.sol
+
 function mass2stage(m) {
-  if (m < 100) return ST_SEEd;
-  return ST_ADULT;
+  if (false) {
+    // TODO
+    return 'DEAD';
+  }
+  if (m < 100) {
+    return 'SEED';
+  }
+  return TreeStages[Math.floor(m / MassPerStage)];
 }
 
-const speciesNames = ['Apple', 'Citrus', 'Cocos', 'Banana', 'Pine', 'XXX', 'YYY', 'Enneftree'];
+const SpeciesNames = ['Apple', 'Citrus', 'Cocos', 'Banana', 'Pine', 'XXX', 'YYY', 'Enneftree'];
 function species2name(speciesIdx) {
-  return speciesNames[speciesIdx];
+  return SpeciesNames[speciesIdx];
 }
+
+const MAX_UINT16 = 65535;
+const FRUIT_PER_MASS = 10;
 
 //export default
-function TreeCard({
+function TreeCardIdx({
   idx,
+  address,
+  mainnetProvider,
+  localProvider,
+  tx,
+  readContracts,
+  writeContracts,
+}) {
+  const seedIdObj = useContractReader(readContracts, "Seed", "tokenOfOwnerByIndex", [address, idx]);
+
+  return seedIdObj ? (<TreeCardInner
+              seedId={seedIdObj.toNumber()}
+              address={address}
+              readContracts={readContracts}
+              writeContracts={writeContracts}
+              tx={tx}
+           />) : '';
+}
+function TreeCardInner({
+  seedId,
   address,
   mainnetProvider,
   localProvider,
@@ -52,14 +81,17 @@ function TreeCard({
   const treeStyle2 = {objectFit: 'none', objectPosition: '0 -256px', width: 96, height: 128, position: 'absolute', top: -48};
   const treeStyle3 = {objectFit: 'none', objectPosition: '0 -384px', width: 96, height: 128, position: 'absolute', top: -48};
   const treeStyleCocos = {objectFit: 'none', objectPosition: '0 -1024px', width: 96, height: 128, position: 'absolute', top: -48};
-console.log(address, idx);
-  const seedIdObj = useContractReader(readContracts, "Seed", "tokenOfOwnerByIndex", [address, idx]);
-  const seedId = seedIdObj ? seedIdObj.toNumber() : -1;
-  const species = 7; // TODO useContractReader(readContracts, "Seed", "species", [seedId]);
+  // returns (uint8 species, uint8 growthFactor, uint8 waterUseFactor, uint8 fertilizerUseFactor, uint8 fruitGrowthFactor) 
+  const treeTraits = useContractReader(readContracts, "Seed", "traits", [seedId]);
+  const treeState = useContractReader(readContracts, "Seed", "state", [seedId]);
+  const landId = useContractReader(readContracts, "Seed", "landId", [seedId]);
+  const species = treeTraits ? treeTraits[0] : null;
+  console.log('species: ', species)
   const speciesName = species2name(species);
-  const mass = 100; // TODO useContractReader(readContracts, "Seed", "mass", [seedId]);
-  const fruitMass = 100; // TODO useContractReader(readContracts, "Seed", "mass", [seedId]);
-  const fruitCount = Math.floor(fruitMass / 10);
+  const mass = useContractReader(readContracts, "Seed", "mass", [seedId]);
+  const waterLevel = useContractReader(readContracts, "Seed", "waterLevel", [seedId]);
+  const fruitMass = useContractReader(readContracts, "Seed", "fruitMass", [seedId]);
+  const fruitCount = Math.floor((fruitMass ? fruitMass.toNumber() : 0) / FRUIT_PER_MASS);
 
   const treeStyle = treeStyleCocos; // [treeStyle1, treeStyle2, treeStyle3][species % 3]; // XXX just show some variation
 
@@ -67,20 +99,23 @@ console.log(address, idx);
     <Card>
           <div style={{marginTop: 100, position: 'relative'}}>
             <img src={fruitTreePng} style={treeStyle} />
-            <span className="gnd gnd-tilled-in-grass"><span id={"tree-1-" + idx}></span></span>
+            <span className="gnd gnd-tilled-in-grass"><span id={"tree-1-" + seedId}></span></span>
           </div>
           <h3>Stats</h3>
           <div> ID: { seedId }</div>
           <div> Species: { speciesName }</div>
-          <div> X: { seedId % 32 } </div>
-          <div> Y: { Math.floor(seedId / 32) }</div>
-          <div> Health: 60% TODO Thirst?</div>
-          <div> Stage: { mass2stage(mass) }</div>
+          <div> Traits/Factors: { treeTraits ? treeTraits.join(', ') : '' }</div>
+          { landId === MAX_UINT16 ?
+             (<div> Land: Unplanted </div>) : 
+             (<div> Land X/Y: { landId % 32 } / { Math.floor(landId / 32) }</div>)
+          }
+          <div> Water Level: { waterLevel ? waterLevel.toString() : 'N/A' } </div>
+          <div> Stage: { mass2stage(mass ? mass.toNumber() : 0) }</div>
           <div> Fruit: { fruitCount } </div>
           <Button
             style={{ marginTop: 8 }}
             onClick={async () => {
-              const result = tx(writeContracts.Seed.water(), update => {
+              const result = tx(writeContracts.Seed.water(seedId), update => {
                   console.log("📡 Transaction Update:", update);
                   if (update && (update.status === "confirmed" || update.status === 1)) {
                   console.log(" 🍾 Transaction " + update.hash + " finished!");
@@ -101,9 +136,78 @@ console.log(address, idx);
           >
               Water!
           </Button>
-          <Button> _Fertilize! </Button>
-          <Button> _Harvest! </Button>
-          <Button> _Burn! </Button>
+          <Button
+            style={{ marginTop: 8 }}
+            onClick={async () => {
+              const result = tx(writeContracts.Seed.fertilize(seedId), update => {
+                  console.log("📡 Transaction Update:", update);
+                  if (update && (update.status === "confirmed" || update.status === 1)) {
+                  console.log(" 🍾 Transaction " + update.hash + " finished!");
+                  console.log(
+                      " ⛽️ " +
+                      update.gasUsed +
+                      "/" +
+                      (update.gasLimit || update.gas) +
+                      " @ " +
+                      parseFloat(update.gasPrice) / 1000000000 +
+                      " gwei",
+                      );
+                  }
+                  });
+              console.log("awaiting metamask/web3 confirm result...", result);
+              console.log(await result);
+            }}
+           >
+              Fertilize !
+          </Button>
+          <Button
+            style={{ marginTop: 8 }}
+            onClick={async () => {
+              const result = tx(writeContracts.Seed.harvest(seedId), update => {
+                  console.log("📡 Transaction Update:", update);
+                  if (update && (update.status === "confirmed" || update.status === 1)) {
+                  console.log(" 🍾 Transaction " + update.hash + " finished!");
+                  console.log(
+                      " ⛽️ " +
+                      update.gasUsed +
+                      "/" +
+                      (update.gasLimit || update.gas) +
+                      " @ " +
+                      parseFloat(update.gasPrice) / 1000000000 +
+                      " gwei",
+                      );
+                  }
+                  });
+              console.log("awaiting metamask/web3 confirm result...", result);
+              console.log(await result);
+            }}
+           >
+              Harvest !
+          </Button>
+          <Button
+            style={{ marginTop: 8 }}
+            onClick={async () => {
+              const result = tx(writeContracts.Seed.burn(seedId), update => {
+                  console.log("📡 Transaction Update:", update);
+                  if (update && (update.status === "confirmed" || update.status === 1)) {
+                  console.log(" 🍾 Transaction " + update.hash + " finished!");
+                  console.log(
+                      " ⛽️ " +
+                      update.gasUsed +
+                      "/" +
+                      (update.gasLimit || update.gas) +
+                      " @ " +
+                      parseFloat(update.gasPrice) / 1000000000 +
+                      " gwei",
+                      );
+                  }
+                  });
+              console.log("awaiting metamask/web3 confirm result...", result);
+              console.log(await result);
+            }}
+           >
+              Burn !
+          </Button>
           <Divider />
     </Card>
   );
@@ -586,7 +690,7 @@ For each Seed, show:
           <h1>Your Property: Iterate over Seed tokens, then empty Land</h1>
 
           {
-            seedTokensOfOwnerByIndex.map(idx => <TreeCard key={'treecard-'+idx}
+            seedTokensOfOwnerByIndex.map(idx => <TreeCardIdx key={'treecard-'+idx}
               idx={idx}
               address={address}
               readContracts={readContracts}
