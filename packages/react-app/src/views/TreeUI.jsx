@@ -418,6 +418,83 @@ function TreeBuilder({
     </Panel></Collapse>
   )
 }
+function TreeMapSingle({
+  landId,
+  address,
+  mainnetProvider,
+  localProvider,
+  yourLocalBalance,
+  tx,
+  readContracts,
+  writeContracts,
+}) {
+  const landType = useContractReader(readContracts, "Land", "landTypes", [landId]);
+  const seedId = 'foo'; // useContractReader(readContracts, "Seed", "seedIdByLandId", [landId]);
+  const landOwner = useContractReader(readContracts, "Land", "ownerOf", [landId]);
+  const mapCellStyle = {
+    display: 'inline-block',
+    width: '200px',
+    height: '200px',
+    backgroundColor: 'aliceblue',
+    border: '2px solid',
+    borderRadius: '10px',
+    overflow: 'hidden',
+  };
+
+  return (
+    <div style={mapCellStyle} >
+      <div>Land { landId }</div>
+      <div>Type { landType ? landType.toString() : '...' }</div>
+      <div>Owner { landOwner ? utils.getAddress(landOwner) : '...' }</div>
+    </div>
+  )
+}
+function TreeMap({
+  address,
+  mainnetProvider,
+  localProvider,
+  yourLocalBalance,
+  tx,
+  readContracts,
+  writeContracts,
+}) {
+  /*
+  const [newCurrencyApproveAmount, setNewCurrencyApproveAmount] = useState(utils.parseUnits('0.1').toString());
+  const currencyBalance = useContractReader(readContracts, "Currency", "balanceOf", [address]);
+  const fruitPrice = useContractReader(readContracts, "Fruit", "price");
+  const fruitBalance = useContractReader(readContracts, "Fruit", "balanceOf", [address]);
+  const [newFruitApproveAmount, setNewFruitApproveAmount] = useState(utils.parseUnits('100').toString());
+  const [newFruitBuyAmount, setNewFruitBuyAmount] = useState("1");
+  const seedBalance = useContractReader(readContracts, "Seed", "balanceOf", [address]);
+  const landPrice = useContractReader(readContracts, "Land", "price");
+  const [newLandId, setNewLandId] = useState("0");
+  const [newSeedId, setNewSeedId] = useState("0");
+  const firstSeedId = useContractReader(readContracts, "Seed", "tokenOfOwnerByIndex", [address, 0]);
+  const firstLandId = useContractReader(readContracts, "Land", "tokenOfOwnerByIndex", [address, 0]);
+  const landBalance = useContractReader(readContracts, "Land", "balanceOf", [address]);
+  */
+  const landSupply = useContractReader(readContracts, "Land", "totalSupply");
+  const landFetchLimit = 128;
+  const landIds = [...Array(Math.min(landFetchLimit, landSupply ? landSupply.toNumber() : 0)).keys()];
+
+  return (
+    <Collapse><Panel header="Tree Map" >
+      <div>Showing a map of landIds { landIds.toString() }</div>
+      <div style={{overflow: "scroll scroll"}} ><div style={{width: 32*200}}>
+        { landIds.map(landId =>
+            <TreeMapSingle key={'treemapsingle-'+landId}
+                landId={landId}
+                address={address}
+                readContracts={readContracts}
+                writeContracts={writeContracts}
+                tx={tx}
+            />
+          )
+        }
+      </div></div>
+    </Panel></Collapse>
+  )
+}
 export default function TreeUI({
   purpose,
   setPurposeEvents,
@@ -476,6 +553,17 @@ For each Seed, show:
               readContracts={readContracts}
         />
         <Divider />
+        <TreeMap
+              address={address}
+              mainnetProvider={mainnetProvider}
+              localProvider={localProvider}
+              yourLocalBalance={yourLocalBalance}
+              tx={tx}
+              writeContracts={writeContracts}
+              readContracts={readContracts}
+        />
+        <Divider />
+
         {/* use utils.formatEther to display a BigNumber: */}
         <h2>SEED Balance: 1 planted, 2 unplanted TODO traverse my seed tokens and count which have seed stage</h2>
         XXX but TreeCard component loads tree data as component state without bubbling up...
