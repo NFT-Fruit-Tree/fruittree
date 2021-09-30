@@ -107,7 +107,315 @@ console.log(address, idx);
 	);
 }
 
-
+function BuySeed({
+  address,
+  mainnetProvider,
+  localProvider,
+  yourLocalBalance,
+  tx,
+  readContracts,
+  writeContracts,
+}) {
+  const [newCurrencyApproveAmount, setNewCurrencyApproveAmount] = useState(utils.parseUnits('0.1').toString());
+	const currencyBalance = useContractReader(readContracts, "Currency", "balanceOf", [address]);
+	const fruitPrice = useContractReader(readContracts, "Fruit", "price");
+	const fruitBalance = useContractReader(readContracts, "Fruit", "balanceOf", [address]);
+  const [newFruitApproveAmount, setNewFruitApproveAmount] = useState(utils.parseUnits('100').toString());
+  const [newFruitBuyAmount, setNewFruitBuyAmount] = useState("1");
+	const seedBalance = useContractReader(readContracts, "Seed", "balanceOf", [address]);
+	const landPrice = useContractReader(readContracts, "Land", "price");
+  const [newLandId, setNewLandId] = useState("0");
+  const [newSeedId, setNewSeedId] = useState("0");
+	const firstSeedId = useContractReader(readContracts, "Seed", "tokenOfOwnerByIndex", [address, 0]);
+	const firstLandId = useContractReader(readContracts, "Land", "tokenOfOwnerByIndex", [address, 0]);
+	const landBalance = useContractReader(readContracts, "Land", "balanceOf", [address]);
+	return (
+		<div>
+			<h2>Steps to Make a Tree</h2>
+			<ol>
+				<li>
+					<h3>Mint yourself free Currency</h3>
+          <Button
+            style={{ marginTop: 8 }}
+            onClick={async () => {
+              const result = tx(writeContracts.Currency.mint(utils.parseUnits('1')), update => {
+                  console.log("📡 Transaction Update:", update);
+                  if (update && (update.status === "confirmed" || update.status === 1)) {
+                  console.log(" 🍾 Transaction " + update.hash + " finished!");
+                  console.log(
+                      " ⛽️ " +
+                      update.gasUsed +
+                      "/" +
+                      (update.gasLimit || update.gas) +
+                      " @ " +
+                      parseFloat(update.gasPrice) / 1000000000 +
+                      " gwei",
+                      );
+                  }
+                  });
+              console.log("awaiting metamask/web3 confirm result...", result);
+              console.log(await result);
+            }}
+          >
+              Give me free money!
+          </Button>
+				</li>
+				<li>
+				<h3>Approve Currency for Fruit</h3>
+					Your Currency balance: { currencyBalance ? `${currencyBalance.toString()} (${utils.formatEther(currencyBalance)})` : '...' }
+          <Input
+            onChange={e => {
+              setNewCurrencyApproveAmount(e.target.value);
+            }}
+						value={newCurrencyApproveAmount}
+          />
+          <Button
+            style={{ marginTop: 8 }}
+            onClick={async () => {
+              const result = tx(writeContracts.Currency.approve(readContracts.Fruit.address, newCurrencyApproveAmount), update => {
+                  console.log("📡 Transaction Update:", update);
+                  if (update && (update.status === "confirmed" || update.status === 1)) {
+                  console.log(" 🍾 Transaction " + update.hash + " finished!");
+                  console.log(
+                      " ⛽️ " +
+                      update.gasUsed +
+                      "/" +
+                      (update.gasLimit || update.gas) +
+                      " @ " +
+                      parseFloat(update.gasPrice) / 1000000000 +
+                      " gwei",
+                      );
+                  }
+                  });
+              console.log("awaiting metamask/web3 confirm result...", result);
+              console.log(await result);
+            }}
+          >
+              Approve Currency for Fruit!
+          </Button>
+				</li>
+				<li>
+				<h3>Buy Fruit </h3>
+					<div>Fruit price in currency: { fruitPrice ? fruitPrice.toString() : '...' }</div>
+					<div>Amount to buy</div>
+          <Input
+            onChange={e => {
+              setNewFruitBuyAmount(e.target.value);
+            }}
+						value={newFruitBuyAmount}
+          />
+          <Button
+            style={{ marginTop: 8 }}
+            onClick={async () => {
+              const result = tx(writeContracts.Fruit.buy(utils.parseUnits(newFruitBuyAmount)), update => {
+                  console.log("📡 Transaction Update:", update);
+                  if (update && (update.status === "confirmed" || update.status === 1)) {
+                  console.log(" 🍾 Transaction " + update.hash + " finished!");
+                  console.log(
+                      " ⛽️ " +
+                      update.gasUsed +
+                      "/" +
+                      (update.gasLimit || update.gas) +
+                      " @ " +
+                      parseFloat(update.gasPrice) / 1000000000 +
+                      " gwei",
+                      );
+                  }
+                  });
+              console.log("awaiting metamask/web3 confirm result...", result);
+              console.log(await result);
+            }}
+          >
+              Buy Fruits!
+          </Button>
+				</li>
+				<li>
+				<h3>Approve Fruit for Seed</h3>
+					Your Fruit balance: { fruitBalance ? `${fruitBalance.toString()} (${utils.formatEther(fruitBalance)})` : '...' }
+          <Input
+            onChange={e => {
+              setNewFruitApproveAmount(e.target.value);
+            }}
+						value={newFruitApproveAmount}
+          />
+          <Button
+            style={{ marginTop: 8 }}
+            onClick={async () => {
+              const result = tx(writeContracts.Fruit.approve(readContracts.Seed.address, newFruitApproveAmount), update => {
+                  console.log("📡 Transaction Update:", update);
+                  if (update && (update.status === "confirmed" || update.status === 1)) {
+                  console.log(" 🍾 Transaction " + update.hash + " finished!");
+                  console.log(
+                      " ⛽️ " +
+                      update.gasUsed +
+                      "/" +
+                      (update.gasLimit || update.gas) +
+                      " @ " +
+                      parseFloat(update.gasPrice) / 1000000000 +
+                      " gwei",
+                      );
+                  }
+                  });
+              console.log("awaiting metamask/web3 confirm result...", result);
+              console.log(await result);
+            }}
+          >
+              Approve Fruit for Seed
+          </Button>
+				</li>
+				<li>
+				<h3>Buy Seed </h3>
+					<div>Seed price hard-coded at <Input disabled={true} value='10**17' /></div>
+					<div>Amount to buy</div>
+          <Input
+						disabled={true}
+						value={1}
+          />
+          <Button
+            style={{ marginTop: 8 }}
+            onClick={async () => {
+              const result = tx(writeContracts.Seed.buy(), update => {
+                  console.log("📡 Transaction Update:", update);
+                  if (update && (update.status === "confirmed" || update.status === 1)) {
+                  console.log(" 🍾 Transaction " + update.hash + " finished!");
+                  console.log(
+                      " ⛽️ " +
+                      update.gasUsed +
+                      "/" +
+                      (update.gasLimit || update.gas) +
+                      " @ " +
+                      parseFloat(update.gasPrice) / 1000000000 +
+                      " gwei",
+                      );
+                  }
+                  });
+              console.log("awaiting metamask/web3 confirm result...", result);
+              console.log(await result);
+            }}
+          >
+              Buy 1 Seed!
+          </Button>
+					<div>Your Seed balance: { seedBalance ? seedBalance.toString() : '...' }</div>
+				</li>
+				<li>
+				<h3>Approve Currency for Land</h3>
+					Your Currency balance: { currencyBalance ? `${currencyBalance.toString()} (${utils.formatEther(currencyBalance)})` : '...' }
+          <Input
+            onChange={e => {
+              setNewCurrencyApproveAmount(e.target.value);
+            }}
+						value={newCurrencyApproveAmount}
+          /> (duplicated above)
+          <Button
+            style={{ marginTop: 8 }}
+            onClick={async () => {
+              const result = tx(writeContracts.Currency.approve(readContracts.Land.address, newCurrencyApproveAmount), update => {
+                  console.log("📡 Transaction Update:", update);
+                  if (update && (update.status === "confirmed" || update.status === 1)) {
+                  console.log(" 🍾 Transaction " + update.hash + " finished!");
+                  console.log(
+                      " ⛽️ " +
+                      update.gasUsed +
+                      "/" +
+                      (update.gasLimit || update.gas) +
+                      " @ " +
+                      parseFloat(update.gasPrice) / 1000000000 +
+                      " gwei",
+                      );
+                  }
+                  });
+              console.log("awaiting metamask/web3 confirm result...", result);
+              console.log(await result);
+            }}
+          >
+              Approve Currency for Land!
+          </Button>
+				</li>
+				<li>
+				<h3>Buy Land </h3>
+					<div>Current Land price: { landPrice ? landPrice.toString() + ' = ' + utils.formatEther(landPrice) : '...' }</div>
+					<div>Land ID you want to buy</div>
+          <Input
+            onChange={e => {
+              setNewLandId(e.target.value);
+            }}
+						value={newLandId}
+          />
+          <Button
+            style={{ marginTop: 8 }}
+            onClick={async () => {
+              const result = tx(writeContracts.Land.buy(parseInt(newLandId)), update => {
+                  console.log("📡 Transaction Update:", update);
+                  if (update && (update.status === "confirmed" || update.status === 1)) {
+                  console.log(" 🍾 Transaction " + update.hash + " finished!");
+                  console.log(
+                      " ⛽️ " +
+                      update.gasUsed +
+                      "/" +
+                      (update.gasLimit || update.gas) +
+                      " @ " +
+                      parseFloat(update.gasPrice) / 1000000000 +
+                      " gwei",
+                      );
+                  }
+                  });
+              console.log("awaiting metamask/web3 confirm result...", result);
+              console.log(await result);
+            }}
+          >
+              Buy that Land!
+          </Button>
+					<div>Your Land balance: { landBalance ? landBalance.toString() : '...' }</div>
+				</li>
+				<li>
+				<h3>Plant a Seed on a Land </h3>
+					<div>Your Seed balance: { seedBalance ? seedBalance.toString() : '...' }</div>
+					<div>Your first SeedId if you have one: { firstSeedId ? firstSeedId.toString() : '' }</div>
+					<div>Your first LandId if you have one: { firstLandId ? firstLandId.toString() : '' }</div>
+					<div>Seed ID you want to plant </div>
+          <Input
+            onChange={e => {
+              setNewSeedId(e.target.value);
+            }}
+						value={newSeedId}
+          />
+					<div>Land ID you want to plant seed on</div>
+          <Input
+            onChange={e => {
+              setNewLandId(e.target.value);
+            }}
+						value={newLandId}
+          />
+          <Button
+            style={{ marginTop: 8 }}
+            onClick={async () => {
+              const result = tx(writeContracts.Seed.plant(parseInt(newSeedId), parseInt(newLandId)), update => {
+                  console.log("📡 Transaction Update:", update);
+                  if (update && (update.status === "confirmed" || update.status === 1)) {
+                  console.log(" 🍾 Transaction " + update.hash + " finished!");
+                  console.log(
+                      " ⛽️ " +
+                      update.gasUsed +
+                      "/" +
+                      (update.gasLimit || update.gas) +
+                      " @ " +
+                      parseFloat(update.gasPrice) / 1000000000 +
+                      " gwei",
+                      );
+                  }
+                  });
+              console.log("awaiting metamask/web3 confirm result...", result);
+              console.log(await result);
+            }}
+          >
+              Plant Seed on Land!
+          </Button>
+				</li>
+			</ol>
+			
+		</div>
+	)
+}
 export default function TreeUI({
   purpose,
   setPurposeEvents,
@@ -155,6 +463,16 @@ For each Seed, show:
       */}
       <div style={{ border: "1px solid #cccccc", padding: 16, margin: "auto", marginTop: 64 }}>
         <h2>Tree UI:</h2>
+        <Divider />
+				<BuySeed 
+              address={address}
+              mainnetProvider={mainnetProvider}
+              localProvider={localProvider}
+              yourLocalBalance={yourLocalBalance}
+              tx={tx}
+              writeContracts={writeContracts}
+              readContracts={readContracts}
+				/>
         <Divider />
         {/* use utils.formatEther to display a BigNumber: */}
 				<h2>SEED Balance: 1 planted, 2 unplanted TODO traverse my seed tokens and count which have seed stage</h2>
