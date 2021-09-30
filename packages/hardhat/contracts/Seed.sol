@@ -192,7 +192,7 @@ contract Seed is ERC721, ERC721Enumerable {
         if (!_exists(_seedId)) revert UnauthorizedError();
         // Check if it is planted and not dead
         TreeState treeState = state(_seedId);
-        if (treeData[_seedId].landId == 0 || treeState == TreeState.DEAD) revert InvalidStateError(treeState);
+        if (!_isPlanted(treeData[_seedId]) || treeState == TreeState.DEAD) revert InvalidStateError(treeState);
         // Update the tree state
         _updateState(_seedId);
         treeData[_seedId].lastWateredAt = block.timestamp;
@@ -287,7 +287,7 @@ contract Seed is ERC721, ERC721Enumerable {
     /// Calculate the seed's state
     function state(uint256 _seedId) public view returns (TreeState) {
         // Check if the seed is planted, if it has a land
-        if (treeData[_seedId].landId == 0) return TreeState.SEED;
+        if (_isPlanted(treeData[_seedId])) return TreeState.SEED;
         // Check if the tree is dead
         int256 _waterLevel = waterLevel(_seedId);
         if (_waterLevel <= driedDeath) return TreeState.DEAD;
