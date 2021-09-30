@@ -625,7 +625,7 @@ function TreeMap2({
 
   return (
     <Collapse><Panel header="Tree Map" >
-      <div style={{overflow: 'scroll scroll'}}>
+      <div style={{overflow: 'scroll scroll', height: 600}}>
         { gameState ? stateRowsIndexes.map(rowIdx => (<TreeMapRow key={'treemaprow-'+rowIdx}
                 gameStateRow={stateRows[rowIdx]}
                 rowIdx={rowIdx}
