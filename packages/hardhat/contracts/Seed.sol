@@ -332,7 +332,7 @@ contract Seed is ERC721, ERC721Enumerable {
             // For the first time since the tree became adult only
             if (_seed.adultAt == 0) {
                 // Calculate and save when the tree becomes adult
-                _seed.adultAt = _seed.lastSnapshotedAt + (minimumAdultMass - _seed.lastMass) / _growthFactor(_seed) * 3600;
+                _seed.adultAt = _seed.lastSnapshotedAt + (minimumAdultMass - _seed.lastMass) / uint256(_growthFactor(_seed)) * 3600;
             }
 
             // Calculate the fruit mass
@@ -356,28 +356,28 @@ contract Seed is ERC721, ERC721Enumerable {
     
     // Calculate the tree's water level
     function _waterLevel(TreeData storage _seed) internal view returns (int256) {
-        uint256 _treeWaterUseFactor = _waterUseFactor(_seed);
+        uint256 _treeWaterUseFactor = uint256(_waterUseFactor(_seed));
         return 100 - int256(_treeWaterUseFactor * (block.timestamp - _seed.lastWateredAt));
     }
     
     // Calculate the tree's mass
     function _mass(TreeData storage _seed) internal view returns (uint256) {
         // Calculate the time when the tree runs of water
-        uint256 _hydratedTil = _seed.lastWateredAt + 100 / _waterUseFactor(_seed) * 3600;
+        uint256 _hydratedTil = _seed.lastWateredAt + 100 / uint256(_waterUseFactor(_seed)) * 3600;
         // Did the tree ran out of water ?
         uint256 _hydratedTilNow = Math.min(block.timestamp, _hydratedTil);
         // Calculate the new tree mass from the previously calculated mass and calculated the new one
-        return _seed.lastMass + _growthFactor(_seed) * (_hydratedTilNow - _seed.lastSnapshotedAt) / 3600;
+        return _seed.lastMass + uint256(_growthFactor(_seed)) * (_hydratedTilNow - _seed.lastSnapshotedAt) / 3600;
     }
 
     // Calculate the tree's fruit mass
     function _fruitMass(TreeData storage _seed) internal view returns (uint256) {
         // Calculate the time when the tree will run out of fertilizer
-        uint256 _fertilizedTil = _seed.lastFertilizedAt + fertilizerAmount / _fertilizerUseFactor(_seed);
+        uint256 _fertilizedTil = _seed.lastFertilizedAt + fertilizerAmount / uint256(_fertilizerUseFactor(_seed));
         // Did the tree ran out of fertilizer before now ?
         uint256 _fertilizedTilNow = Math.min(block.timestamp, _fertilizedTil);
         // Calculate the fruit mass by adding the previously unharvested fruits and calculating the newly produced mass
-        return _seed.lastFruitMass + _fruitGrowthFactor(_seed) * (_fertilizedTilNow - _seed.lastSnapshotedAt) / 3600;
+        return _seed.lastFruitMass + uint256(_fruitGrowthFactor(_seed)) * (_fertilizedTilNow - _seed.lastSnapshotedAt) / 3600;
     }
 
     // Check if the seed is planted to protect against landId = 0 default value that is a valid Land value (0,0)
