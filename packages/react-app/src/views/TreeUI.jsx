@@ -58,6 +58,7 @@ function species2name(speciesIdx) {
 }
 
 const MAX_UINT16 = 65535;
+const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
 const FRUIT_PER_MASS = 10;
 
 //export default
@@ -627,6 +628,79 @@ function TreeMap({
     </Panel></Collapse>
   )
 }
+function LandInfoInner({
+  landId,
+  address,
+  mainnetProvider,
+  localProvider,
+  yourLocalBalance,
+  tx,
+  readContracts,
+  writeContracts,
+}) {
+  const landType = useContractReader(readContracts, "Land", "landTypes", [landId]);
+  console.log('landType ', landType);
+  const seedId = useContractReader(readContracts, "Seed", "seedByLandId", [landId]);
+  if (seedId) console.log('seed ', seedId.toString());
+  const noSeed = seedId ? seedId.toString() == MAX_UINT256 : true;
+
+  return (
+    <Card>
+      <div>Land ID: { landId ? landId.toString() : '...' }</div>
+      <div>Type: { landType !== undefined ? landType.toString() : '...' }</div>
+      <div>Seed ID: { noSeed ? 'No seed' : (seedId ? seedId.toString() : '...') }</div>
+    </Card>
+  )
+}
+function LandInfo({
+  landIdx,
+  address,
+  mainnetProvider,
+  localProvider,
+  yourLocalBalance,
+  tx,
+  readContracts,
+  writeContracts,
+}) {
+  const landId = useContractReader(readContracts, "Land", "tokenOfOwnerByIndex", [address, landIdx]);
+  return landId ? (<LandInfoInner 
+                      landId={landId.toNumber()}
+                      address={address}
+                      readContracts={readContracts}
+                      writeContracts={writeContracts}
+                      tx={tx}
+    />) : '';
+}
+function LandRegistry({
+  address,
+  mainnetProvider,
+  localProvider,
+  yourLocalBalance,
+  tx,
+  readContracts,
+  writeContracts,
+}) {
+  const landBalance = useContractReader(readContracts, "Land", "balanceOf", [address]);
+  const landIndexes = [...Array(landBalance ? landBalance.toNumber() : 0).keys()];
+
+  return (
+    <Collapse><Panel header="Your Land Registry" >
+      <div>Land plots: { landBalance? landBalance.toString() : '...' }</div>
+      <div>
+        { landIndexes.map(landIdx =>
+            <LandInfo key={'land-'+landIdx}
+                landIdx={landIdx}
+                address={address}
+                readContracts={readContracts}
+                writeContracts={writeContracts}
+                tx={tx}
+            />
+          )
+        }
+      </div>
+    </Panel></Collapse>
+  )
+}
 export default function TreeUI({
   purpose,
   setPurposeEvents,
@@ -686,6 +760,16 @@ For each Seed, show:
         />
         <Divider />
         <TreeMap
+              address={address}
+              mainnetProvider={mainnetProvider}
+              localProvider={localProvider}
+              yourLocalBalance={yourLocalBalance}
+              tx={tx}
+              writeContracts={writeContracts}
+              readContracts={readContracts}
+        />
+        <Divider />
+        <LandRegistry
               address={address}
               mainnetProvider={mainnetProvider}
               localProvider={localProvider}
