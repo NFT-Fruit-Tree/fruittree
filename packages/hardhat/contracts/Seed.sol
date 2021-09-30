@@ -299,6 +299,11 @@ contract Seed is ERC721, ERC721Enumerable {
         return TreeState(_stage);
     }
 
+    /// Calculate the tree's current mass
+    function mass(uint256 _seedId) external view returns (uint256) {
+        return _mass(treeData[_seedId]);
+    }
+
     // Calculate the tree's mass
     function _mass(TreeData storage _seed) internal view returns (uint256) {
         // Calculate the time when the tree runs of water
@@ -313,6 +318,11 @@ contract Seed is ERC721, ERC721Enumerable {
     function waterLevel(uint256 _seedId) public view returns (int256) {
         uint8 _treeWaterUseFactor = _waterUseFactor(treeData[_seedId]);
         return int256(100 - _treeWaterUseFactor * (block.timestamp - treeData[_seedId].lastWateredAt));
+    }
+
+    /// Calculate the tree's fruit mass
+    function fruitMass(uint256 _seedId) external view returns (uint256) {
+        return _fruitMass(treeData[_seedId]);
     }
 
     // Calculate the tree's fruit mass
