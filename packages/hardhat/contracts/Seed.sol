@@ -21,7 +21,7 @@ contract Seed is ERC721, ERC721Enumerable {
 
     uint8 constant mintLimitPerBlock = 8;
     uint8 constant massPerStage = 50;
-    uint8 constant minimumAdultMass = uint8(uint8(TreeState.ADULT) * massPerStage); // mass needed to become adult
+    uint8 constant minimumAdultMass = uint8(TreeState.ADULT) * massPerStage; // mass needed to become adult
     uint8 constant wholeFruitMass = 10; // can harvest 1 FRUIT for every 10 mass
     int16 constant driedDeath = -500; // level at which the tree will die from the lack of water
     // TODO: What's the real value of a seed ?
@@ -113,7 +113,7 @@ contract Seed is ERC721, ERC721Enumerable {
     // A land's game state
     struct LandState {
         address landOwner;
-        uint8 landType;
+        SeedSpecies landType;
         uint256 seedId;
         SeedSpecies seedSpecies;
         TreeState seedState;
@@ -397,8 +397,10 @@ contract Seed is ERC721, ERC721Enumerable {
         uint256 _fertilizedTil = _seed.lastFertilizedAt + fertilizerAmount / uint256(_fertilizerUseFactor(_seed));
         // Did the tree ran out of fertilizer before now ?
         uint256 _fertilizedTilNow = Math.min(block.timestamp, _fertilizedTil);
+        // Did the tree become adult since the last snapshot ?
+        uint256 _lastSnapshotedOrAdultAt = Math.max(_seed.lastSnapshotedAt, _seed.adultAt);
         // Calculate the fruit mass by adding the previously unharvested fruits and calculating the newly produced mass
-        return _seed.lastFruitMass + uint256(_fruitGrowthFactor(_seed)) * (_fertilizedTilNow - _seed.lastSnapshotedAt) / 3600;
+        return _seed.lastFruitMass + uint256(_fruitGrowthFactor(_seed)) * (_fertilizedTilNow - _lastSnapshotedOrAdultAt) / 3600;
     }
 
     // Check if the seed is planted to protect against landId = 0 default value that is a valid Land value (0,0)

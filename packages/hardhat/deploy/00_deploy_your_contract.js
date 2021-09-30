@@ -37,7 +37,7 @@ module.exports = async ({ getNamedAccounts, deployments }) => {
         try {
             await land.premint(i, i + step);
         } catch (e) {
-            console.error(`🛑 Premint failed for i from ${i}`);
+            console.error(`🛑 Premint failed for i from ${i} to ${i + step}`);
             throw e;
         }
     }

@@ -8,6 +8,7 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 import { Counters } from "@openzeppelin/contracts/utils/Counters.sol";
 import { UnauthorizedError, TransferError } from "./Shared.sol";
+import { Seed } from "./Seed.sol";
 
 /**
  * The Land contract of the `nft-fruit-tree` game.
@@ -25,7 +26,7 @@ contract Land is ERC721, ERC721Enumerable, Ownable {
     uint256 immutable currencyUnits; // 10 ** currency.decimals()
 
     // Mapping from the land id to its land type
-    mapping (uint16 => uint8) public landTypes;
+    mapping (uint16 => Seed.SeedSpecies) public landTypes;
 
     /// The given coordinates x=`x` and y=`y` should be inside the bounds
     error OutOfBounds(uint8 x, uint8 y);
@@ -60,9 +61,9 @@ contract Land is ERC721, ERC721Enumerable, Ownable {
     }
 
     // Generate the land type from the land id, block timestamp, block difficulty.
-    // FIXME: 🚨 Only pseudo random
-    function _generateType(uint16 _landId) internal view returns (uint8) {
-        return uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.difficulty, _landId))) % 8);
+    // FIXME: 🚨 Only pseudo random. Too costly ?
+    function _generateType(uint16 _landId) internal view returns (Seed.SeedSpecies) {
+        return Seed.SeedSpecies(uint256(keccak256(abi.encodePacked(block.timestamp, _landId))) % 8);
     }
 
     // Premint the land token from index `from` to `to`
