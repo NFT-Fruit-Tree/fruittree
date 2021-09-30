@@ -344,7 +344,7 @@ contract Seed is ERC721, ERC721Enumerable {
 
     /// Get the tree's land id
     function landId(uint256 _seedId) external view returns (uint16) {
-        if (!_isPlanted(treeData[_seedId])) revert NoPlantedSeedError();
+        if (!_isPlanted(treeData[_seedId])) return type(uint16).max;
         return treeData[_seedId].landId;
     }
 
@@ -359,7 +359,7 @@ contract Seed is ERC721, ERC721Enumerable {
             if (treeData[_seedId].landId == _landId && _isPlanted(treeData[_seedId])) return _seedId;
         }
         // It should only happen when there is seed planted on this land
-        revert NoPlantedSeedError();
+        return type(uint16).max;
     }
 
     // Check if the seed is planted to protect against landId = 0 default value that is a valid Land value (0,0)
