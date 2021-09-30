@@ -37,7 +37,7 @@ function mass2stage(m) {
   if (m < 100) {
     return 'SEED';
   }
-  return TreeStages[Math.floor(m / MassPerStage)];
+  return TreeStages[Math.min(4, Math.floor(m / MassPerStage))];
 }
 const SpeciesNames = ['Lingo', 'Mican', 'Nasu', 'Abo', 'Cheri', 'Ume', 'Banana', 'Coco'];
 const SpeciesBabyImgOffsets = { 
@@ -127,7 +127,9 @@ function TreeCardInner({
           }
           <div> Mass: { mass ? mass.toNumber() : 0 }</div>
           <div> Water Level: { waterLevel ? waterLevel.toString() : 'N/A' } </div>
-          <div> Stage: { mass2stage(mass ? mass.toNumber() : 0) }</div>
+          <div> Stage from mass: { mass2stage(mass ? mass.toNumber() : 0) }</div>
+          <div> treeState: { treeState }</div>
+
           <div> Fruit: { fruitCount } </div>
           <Button
             style={{ marginTop: 8 }}
@@ -152,6 +154,30 @@ function TreeCardInner({
             }}
           >
               Water!
+          </Button>
+          <Button
+            style={{ marginTop: 8 }}
+            onClick={async () => {
+              const result = tx(writeContracts.Currency.approve(readContracts.Seed.address, utils.parseEther('12345')), update => {
+                  console.log("📡 Transaction Update:", update);
+                  if (update && (update.status === "confirmed" || update.status === 1)) {
+                  console.log(" 🍾 Transaction " + update.hash + " finished!");
+                  console.log(
+                      " ⛽️ " +
+                      update.gasUsed +
+                      "/" +
+                      (update.gasLimit || update.gas) +
+                      " @ " +
+                      parseFloat(update.gasPrice) / 1000000000 +
+                      " gwei",
+                      );
+                  }
+                  });
+              console.log("awaiting metamask/web3 confirm result...", result);
+              console.log(await result);
+            }}
+           >
+              Approve before fertilize !
           </Button>
           <Button
             style={{ marginTop: 8 }}
@@ -582,6 +608,47 @@ function TreeMapSingle({
     </div>
   )
 }
+function TreeMap2({
+  address,
+  mainnetProvider,
+  localProvider,
+  yourLocalBalance,
+  tx,
+  readContracts,
+  writeContracts,
+}) {
+  const gameState = useContractReader(readContracts, "Seed", "gameState");
+  console.log('............................. game state ', gameState);
+  const stateRowCount = gameState ? Math.floor(gameState.length / 32) : 0;
+  const stateRowsIndexes = [...Array(stateRowCount).keys()];
+  const stateRows = gameState ? stateRowsIndexes.map(rowIdx => gameState.slice(32*rowIdx, 32*(1+rowIdx))) : [];
+
+  return (
+    <Collapse><Panel header="Tree Map" >
+      <div style={{overflow: 'scroll scroll'}}>
+        { gameState ? stateRowsIndexes.map(rowIdx => (<TreeMapRow key={'treemaprow-'+rowIdx}
+                gameStateRow={stateRows[rowIdx]}
+                rowIdx={rowIdx}
+            />)) : '' }
+      </div>
+    </Panel></Collapse>
+  )
+}
+function TreeMapRow({
+  gameStateRow,
+  rowIdx,
+}) {
+ // return (<div>{rowIdx} {gameStateRow.length}</div>);
+  return (
+    <div style={{width:3200}} >
+      { gameStateRow.map((data, colIdx) => (<div key={`foo-${rowIdx}-${colIdx}`} style={{display:'inline-block', border: '1px solid black', width:100, height: 100}}>
+          <div>id { data.seedId.toString() === MAX_UINT256 ? 'seedless' : data.seedId.toNumber() }</div>
+          <div>species { data.seedSpecies.toString() }</div>
+          <div>state { data.seedState.toString() }</div>
+         </div>)) }
+    </div>
+  )
+}
 function TreeMap({
   address,
   mainnetProvider,
@@ -759,7 +826,7 @@ For each Seed, show:
               readContracts={readContracts}
         />
         <Divider />
-        <TreeMap
+        <TreeMap2
               address={address}
               mainnetProvider={mainnetProvider}
               localProvider={localProvider}
