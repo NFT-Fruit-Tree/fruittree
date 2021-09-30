@@ -401,16 +401,32 @@ contract Seed is ERC721, ERC721Enumerable {
         treeData[_seedId].lastMass = _treeMass;
     }
 
+// A land's game state
+struct LandState {
+    address landOwner;
+    uint8 landType;
+    uint256 seedId;
+    uint8 seedSpecies;
+    TreeState seedState;
+    uint256 unharvestedFruits;
+}
 
-    //struct GameState {
-    //    address owner;
-
-    //}
-
-    ///// Calculate the entire game state
-    //function gameState() external view returns (GameState[1024] memory) {
-
-    //}
+/// Calculate the entire game state
+function gameState() external view returns (LandState[1024] memory _landState) {
+    // Loop over every lands
+    for (uint16 i = 0; i < land.totalSupply(); i++) {
+        // Get the land's owner
+        _landState[i].landOwner = land.ownerOf(i);
+        // Get the land's type
+        _landState[i].landType = land.landTypes(i);
+        // Get the land's seed id
+        uint256 _seedId = seedByLandId(i);
+        _landState[i].seedId = _seedId;
+        _landState[i].seedSpecies = _species(treeData[_seedId]);
+        _landState[i].seedState = state(_seedId);
+        _landState[i].unharvestedFruits = unharvestedFruitCount(_seedId);
+    }
+}
 
     /* --- Seed trait functions --- */
 
@@ -463,12 +479,12 @@ contract Seed is ERC721, ERC721Enumerable {
         return _traitFromDNA(_seed.dna, _fruitGrowthFactorLastBitPosition, _fruitGrowthFactorMask);
     }
 
+    /* Still needed ?
     // Calculate the tree's longevity
     function _longevity(TreeData storage _seed) internal view returns (uint8) {
         return _traitFromDNA(_seed.dna, _longevityLastBitPosition, _longevityMask);
     }
 
-    /* Still needed ?
     function _fruitColor(TreeData storage _seed) internal view returns (uint8) {
         return _traitFromDNA(_seed.dna, _fruitColorLastBitPosition, _fruitColorMask);
     }
