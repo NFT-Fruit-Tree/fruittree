@@ -566,7 +566,7 @@ function fakeGameState(gameState) {
     let newData = { ...data };
     newData.seedSpecies = Math.floor(Math.random() * 8);
     newData.seedId = gameState[0].seedId;
-    newData.seedState = Math.floor(1 + Math.random() * 5);
+    newData.seedState = /*Math.random() < 0.2 ? 3 : 4; //*/ Math.floor((Math.random() < 0.1 ? 0 : 1) + Math.random() * 4);
     // TODO display .landType somehow
     // TODO unharvestedFruits.toNumber()
     newData.fakeFruits = newData.seedState != 4 ? 0 : Math.floor(Math.random() * 10); // TODO what's a reasonable count range
@@ -632,7 +632,9 @@ function calcTreePos(species, treeState, fruitCount) {
       return '0 -896px';
     }
     if (TreeStages[treeState] == 'ADULT' && fruitCount > 0) {
-      return `-${SpeciesFruitImgOffsets[species2name(species)][0] * 96}px -${SpeciesFruitImgOffsets[species2name(species)][1] * 128}px`;
+      const offs = SpeciesFruitImgOffsets[species2name(species)];
+      const fruitOff = fruitCount > 20 ? 2 : Math.floor(fruitCount / 10);
+      return `-${offs[0] * 96}px -${(offs[1] - fruitOff) * 128}px`;
     }
     const posX = SpeciesBabyImgOffsets[species2name(species)][0] * 96;
     const stageOffY = (treeState - 1) * 128; // only applicable if not SEED and DEAD
