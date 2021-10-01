@@ -719,9 +719,9 @@ function LandRegistry({
   const styth = { padding: 20 };
   return (
     <Collapse><Panel header="Your Land Registry" >
-      <div>Your owned Land Plots: { landBalance? landBalance.toString() : '...' }</div>
+      <h2>Your owned Land Plots: { landBalance? landBalance.toString() : '...' }</h2>
       { landIndexes.length ? 
-        (<table>
+        (<table style={{margin: 'auto'}}>
           <thead><tr><th style={styth}>Land ID</th><th style={styth}>Land Code</th><th style={styth}>Seed</th></tr></thead>
           <tbody>{ landIndexes.map(landIdx =>
               (<LandInfo key={'land-'+landIdx}
@@ -751,9 +751,11 @@ export default function TreeUI({
   const [newPurpose, setNewPurpose] = useState("loading...");
 
   const landSupply = useContractReader(readContracts, "Land", "totalSupply");
-  const fruitTotalSupply = useContractReader(readContracts, "Fruit", "totalSupply");
+  const fruitSupply = useContractReader(readContracts, "Fruit", "totalSupply");
+  const crcBalance = useContractReader(readContracts, "Currency", "balanceOf", [address]);
   const fruitBalance = useContractReader(readContracts, "Fruit", "balanceOf", [address]);
   const seedBalance = useContractReader(readContracts, "Seed", "balanceOf", [address]);
+  const landBalance = useContractReader(readContracts, "Land", "balanceOf", [address]);
 /*
 
 Show My Balances of: Seeds (Trees), Land Plots, Fruits
@@ -816,13 +818,21 @@ For each Seed, show:
         <Divider />
 
         {/* use utils.formatEther to display a BigNumber: */}
-        <h2>SEED Balance: 1 planted, 2 unplanted TODO traverse my seed tokens and count which have seed stage</h2>
-        XXX but TreeCard component loads tree data as component state without bubbling up...
-        <h2>LAND Balance (temp showing totalSupply): {landSupply ? landSupply.toString() : '...'}</h2>
-        <h2>FRUIT Balance: {fruitBalance ? utils.formatEther(fruitBalance) : "..."} of totalSupply {fruitTotalSupply ? utils.formatEther(fruitTotalSupply) : '...'}</h2>
+        <Collapse><Panel header="Your Bank">
+          <table style={{margin: 'auto'}}><
+            thead><tr><th>Token</th><th>Balance</th></tr></thead><
+            tbody><
+                   tr><td>CRC</td><td>{ crcBalance ? utils.formatEther(crcBalance) : '...' }</td></tr><
+                   tr><td>SEED</td><td>{ seedBalance ? seedBalance.toNumber() : '...' }</td></tr><
+                   tr><td>LAND</td><td>{ landBalance ? landBalance.toNumber() : '...' }</td></tr><
+                   tr><td>Total LAND Supply</td><td>{ landSupply ? landSupply.toNumber() : '...' }</td></tr><
+                   tr><td>FRUIT</td><td>{ fruitBalance ? utils.formatEther(fruitBalance) : '...' }</td></tr><
+                   tr><td>Total FRUIT Supply</td><td>{ fruitSupply ? utils.formatEther(fruitSupply) : '...' }</td></tr><
+           /tbody></table>
+        </Panel></Collapse>
         <Divider />
         <Card>
-          <h1>Your Property: Iterate over Seed tokens, then empty Land</h1>
+          <h1>Your Trees</h1>
 
           {
             seedTokensOfOwnerByIndex.map(idx => <TreeCardIdx key={'treecard-'+idx}
