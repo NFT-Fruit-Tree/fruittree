@@ -788,7 +788,7 @@ For each Seed, show:
         ⚙️ Here is an example UI that displays and sets the purpose in your smart contract:
       */}
       <div style={{ border: "1px solid #cccccc", padding: 16, margin: "auto", marginTop: 64 }}>
-        <h2>Tree UI:</h2>
+        <h1>NFT Fruit Tree</h1>
         <Divider />
         <TreeBuilder 
               address={address}
@@ -850,29 +850,6 @@ For each Seed, show:
             )
           }
           </Row>
-        </Card>
-        <Divider />
-        <Card>
-          <h2>Tree Map:</h2>
-          <div>Choose LAND to buy or plant a seed</div>
-          <div style={{position: 'relative'}}>
-            <span className="gnd gnd-tilled-in-grass"><span id="tree-1-1"></span></span>
-            <img src={fruitTreePng} style={treeStyle1} />
-            <span className="gnd gnd-tilled-in-grass"></span>
-            <img src={fruitTreePng} style={treeStyle2} />
-            <span className="gnd gnd-tilled-in-grass"></span>
-            <img src={fruitTreePng} style={treeStyle3} />
-            <span className="gnd gnd-tilled-in-grass"></span>
-            <span id="t1"></span>
-            <span className="gnd gnd-tilled-in-grass"></span>
-            <span className="gnd gnd-tilled-in-grass"></span>
-            <span className="gnd gnd-tilled-in-grass"></span>
-            <span className="gnd gnd-tilled-in-grass"></span>
-            <span className="gnd gnd-tilled-in-grass"></span>
-            <span className="gnd gnd-tilled-in-grass"></span>
-            <span className="gnd gnd-tilled-in-grass"></span>
-            <span className="gnd gnd-tilled-in-grass"></span>
-          </div>
         </Card>
       </div>
     </div>
