@@ -27,6 +27,7 @@ contract Seed is ERC721, ERC721Enumerable {
     uint8 constant wholeFruitMass = 10; // can harvest 1 FRUIT for every 10 mass
     uint16 constant baseWaterUsePercentage = 400;
     uint16 constant baseFertilizerUsePercentage = 400;
+    uint16 constant growthMassLimit = 480;
     int16 constant driedDeath = -500; // level at which the tree will die from the lack of water
     // TODO: What's the real value of a seed ?
     uint256 constant seedPrice = 10 ** 17;
@@ -297,6 +298,7 @@ contract Seed is ERC721, ERC721Enumerable {
         if (_treeWaterLevel <= driedDeath) return TreeState.DEAD;
         // Calculate the tree's mass
         uint256 _treeMass = _mass(treeData[_seedId]);
+        if (_treeMass >= growthMassLimit) return TreeState.DEAD;
         // Calculate the tree's stage
         uint256 _stage = _treeMass / massPerStage;
         if (_stage >= uint8(TreeState.ADULT)) return TreeState.ADULT;
@@ -308,7 +310,7 @@ contract Seed is ERC721, ERC721Enumerable {
         // Check if the seed is planted
         if (!_isPlanted(treeData[_seedId])) return 0;
         // Calculate the planted seed mass
-        return _mass(treeData[_seedId]);
+        return Math.min(_mass(treeData[_seedId]), growthMassLimit);
     }
 
     /// Calculate the tree's water level
