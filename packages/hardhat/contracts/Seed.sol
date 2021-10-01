@@ -179,7 +179,6 @@ contract Seed is ERC721, ERC721Enumerable {
         _safeMint(msg.sender, _id);
         _tokenIdCounter.increment();
         // Initialise the seed's traits
-        // TODO: calculate the different traits using the species trait values and its dna
         treeData[_id].dna = uint32(_dna);
     }
 
@@ -283,7 +282,6 @@ contract Seed is ERC721, ERC721Enumerable {
     function burn(uint256 _seedId) external {
         // Check if the token exists and if the sender owns the seed
         if (ownerOf(_seedId) != msg.sender) revert UnauthorizedError();
-        // TODO: Should we check the tree state ? 
         delete treeData[_seedId];
         _burn(_seedId);
     }
