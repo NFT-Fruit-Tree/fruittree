@@ -1,6 +1,6 @@
 import { SyncOutlined } from "@ant-design/icons";
 import { utils } from "ethers";
-import { Button, Card, Collapse, DatePicker, Divider, Input, List, Progress, Slider, Spin, Switch } from "antd";
+import { Button, Card, Col, Collapse, DatePicker, Divider, Input, List, Progress, Row, Slider, Spin, Statistic, Switch } from "antd";
 import React, { useState } from "react";
 import { Address, Balance } from "../components";
 
@@ -105,25 +105,16 @@ function TreeCardInner({
   const fruitCount = Math.floor((fruitMass ? fruitMass.toNumber() : 0) / FRUIT_PER_MASS);
 
   return (
-    <Card>
-          <div style={{marginTop: 100, position: 'relative'}}>
+    <Col className="gutter-row" span={12}>
+      <Card title={`${speciesName} @ Land ${landId}`} extra={<a href="#">More</a>} style={{ width:500 }}>
+        <div style={{float: 'left', width: 250 }}>
+          <h3> #{ seedId }</h3>
+          <div style={{marginTop: 50, padding: 25, position: 'relative'}}>
             { !treeState ? '' : (<img src={fruitTreePng} style={treeStyle} />) }
             <span className="gnd gnd-tilled-in-grass"><span id={"tree-1-" + seedId}></span></span>
           </div>
-          <h3>Stats</h3>
-          <div> ID: { seedId }</div>
-          <div> Species: { speciesName }</div>
-          <div> Traits/Factors: { treeTraits ? treeTraits.join(', ') : '' }</div>
-          { landId === MAX_UINT16 ?
-             (<div> Land: Unplanted </div>) : 
-             (<div> Land X/Y: { landId % 32 } / { Math.floor(landId / 32) }</div>)
-          }
-          <div> Mass: { mass ? mass.toNumber() : 0 }</div>
-          <div> Water Level: { waterLevel ? waterLevel.toString() : 'N/A' } </div>
-          <div> Stage from mass: { mass2stage(mass ? mass.toNumber() : 0) }</div>
-          <div> treeState: { TreeStages[treeState] }</div>
-
-          <div> Fruit: { fruitCount } </div>
+          <h3> Species: { speciesName }</h3>
+         </div><div style={{float: 'left', marginTop: 25, width: 150}}>
           <Button
             style={{ marginTop: 8 }}
             onClick={async () => {
@@ -245,8 +236,21 @@ function TreeCardInner({
            >
               Burn ! <img src={iconFire} width='20' />
           </Button>
-          <Divider />
-    </Card>
+         </div>
+         <div style={{clear: 'both'}}>
+         <Divider/>
+          <Row gutter={24}>
+           <Col span={12}><Statistic title="Location" value={ landId === MAX_UINT16 ? 'Unplanted' : 
+             `${ landId % 32 } / ${ Math.floor(landId / 32) }` } /></Col>
+           <Col span={12}><Statistic title="Mass" value={ mass ? mass.toNumber() : 0 } /></Col>
+           <Col span={12}><Statistic title="Fruit" value={ fruitCount } /></Col>
+           <Col span={12}><Statistic title="Water Level" value={ waterLevel ? waterLevel.toString() : 'N/A' } /></Col>
+           <Col span={12}><Statistic title="Growth Stage" value={ TreeStages[treeState] } /></Col>
+           <Col span={12}><Statistic title="Factors" value={ treeTraits ? treeTraits.join(', ') : '' } /></Col>
+          </Row>
+         </div>
+      </Card>
+     </Col>
   );
 }
 
@@ -834,6 +838,7 @@ For each Seed, show:
         <Card>
           <h1>Your Trees</h1>
 
+          <Row gutter={{ xs: 8, sm: 16, md: 24, lg: 32 }}>
           {
             seedTokensOfOwnerByIndex.map(idx => <TreeCardIdx key={'treecard-'+idx}
               idx={idx}
@@ -844,6 +849,7 @@ For each Seed, show:
              />
             )
           }
+          </Row>
         </Card>
         <Divider />
         <Card>
