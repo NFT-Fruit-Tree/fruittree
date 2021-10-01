@@ -87,7 +87,7 @@ function TreeCardInner({
   const treeStyleCocos = {objectFit: 'none', objectPosition: '0 -1024px', width: 96, height: 128, position: 'absolute', top: -48};
   // returns (uint8 species, uint8 growthFactor, uint8 waterUseFactor, uint8 fertilizerUseFactor, uint8 fruitGrowthFactor) 
   const treeTraits = useContractReader(readContracts, "Seed", "traits", [seedId]);
-  const treeState = useContractReader(readContracts, "Seed", "state", [seedId]);
+  const treeState = 4;//useContractReader(readContracts, "Seed", "state", [seedId]);
   console.log('state: ', treeState);
   const landId = useContractReader(readContracts, "Seed", "landId", [seedId]);
   const species = treeTraits ? treeTraits[0] : null;
@@ -109,12 +109,12 @@ function TreeCardInner({
       <Card title={`${speciesName} @ Land ${landId}`} extra={<a href="#">More</a>} style={{ width:500 }}>
         <div style={{float: 'left', width: 250 }}>
           <h3> #{ seedId }</h3>
-          <div style={{marginTop: 50, padding: 25, position: 'relative'}}>
-            { !treeState ? '' : (<img src={fruitTreePng} style={treeStyle} />) }
-            <span className="gnd gnd-tilled-in-grass"><span id={"tree-1-" + seedId}></span></span>
+          <div style={{marginTop: 50, padding: 0, position: 'relative'}}>
+            { !treeState || speciesName == '_ERROR_' ? '' : (<img src={fruitTreePng} style={getTreeStyle(species, treeState, fruitCount)} />) }
+            <span className="gnd gnd-tilled-in-grass"></span>
           </div>
           <h3> Species: { speciesName }</h3>
-         </div><div style={{float: 'left', marginTop: 25, width: 150}}>
+         </div><div style={{float: 'left', marginBottom: 25, width: 150}}>
           <Button
             style={{ marginTop: 8 }}
             onClick={async () => {
@@ -645,14 +645,15 @@ function calcTreePos(species, treeState, fruitCount) {
     const posY = SpeciesBabyImgOffsets[species2name(species)][1] * 128 - stageOffY;
     return `-${posX}px -${posY}px`;
 }
+const getTreeStyle = (species, treeState, fruitCount) => {
+  console.log(species);
+    return {objectFit: 'none', objectPosition: calcTreePos(species, treeState, fruitCount), width: 96, height: 128, position: 'absolute', top: -64};
+};
 function TreeMapRow({
   gameStateRow,
   rowIdx,
 }) {
  // return (<div>{rowIdx} {gameStateRow.length}</div>);
-  const getTreeStyle = (species, treeState, fruitCount) => {
-    return {objectFit: 'none', objectPosition: calcTreePos(species, treeState, fruitCount), width: 96, height: 128, position: 'absolute', top: -64};
-  };
   const normalSeedId = (seedIdObj) => seedIdObj ? (seedIdObj.toString() == MAX_UINT256 ? null : seedIdObj.toNumber()) : null;
   return (
     <div style={{width:3200, height:94 /* XXX */}} >
@@ -660,7 +661,7 @@ function TreeMapRow({
           (<div key={`foo-${rowIdx}-${colIdx}`} style={{display:'inline-block', /*border: '1px solid black', width:100, height: 100,*/ position: 'relative'}}>
             { (!data.seedState || normalSeedId(data.seedId) === null) ? '' : (<img src={fruitTreePng} style={getTreeStyle(data.seedSpecies, data.seedState, data.fakeFruits)} />) }
             <span className="gnd gnd-tilled-in-grass">{/*<span id={"tree-" + (data.seedId }></span>*/}</span>
-            <div style={{position: 'absolute', top: 0, left: 0, opacity: 0.5}}>
+            <div style={{position: 'absolute', top: 0, left: 0, opacity: 0.1}}>
               <div>id { normalSeedId(data.seedId)}</div>
               <div>species { data.seedSpecies.toString() }</div>
               <div>state { data.seedState.toString() }</div>
@@ -852,6 +853,8 @@ For each Seed, show:
           </Row>
         </Card>
       </div>
+      <Divider />
+      <div style={{height: 100}}> </div>
     </div>
   );
 }
