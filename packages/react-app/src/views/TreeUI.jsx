@@ -682,13 +682,9 @@ function LandInfoInner({
   if (seedId) console.log('seed ', seedId.toString());
   const noSeed = seedId ? seedId.toString() == MAX_UINT256 : true;
 
-  return (
-    <Card>
-      <div>Land ID: { landId ? landId.toString() : '...' }</div>
-      <div>Type: { landType !== undefined ? landType.toString() : '...' }</div>
-      <div>Seed ID: { noSeed ? 'No seed' : (seedId ? seedId.toString() : '...') }</div>
-    </Card>
-  )
+  return (<tr><td>{ landId.toString !== undefined ? landId.toString() : '...' }</td>
+      <td>{ landType !== undefined ? landType.toString() : '...' }</td>
+      <td>{ noSeed ? 'No seed' : (seedId ? seedId.toString() : '...') }</td></tr>)
 }
 function LandInfo({
   landIdx,
@@ -707,7 +703,7 @@ function LandInfo({
                       readContracts={readContracts}
                       writeContracts={writeContracts}
                       tx={tx}
-    />) : '';
+    />) : null;
 }
 function LandRegistry({
   address,
@@ -720,22 +716,23 @@ function LandRegistry({
 }) {
   const landBalance = useContractReader(readContracts, "Land", "balanceOf", [address]);
   const landIndexes = [...Array(landBalance ? landBalance.toNumber() : 0).keys()];
-
+  const styth = { padding: 20 };
   return (
     <Collapse><Panel header="Your Land Registry" >
-      <div>Land plots: { landBalance? landBalance.toString() : '...' }</div>
-      <div>
-        { landIndexes.map(landIdx =>
-            <LandInfo key={'land-'+landIdx}
-                landIdx={landIdx}
-                address={address}
-                readContracts={readContracts}
-                writeContracts={writeContracts}
-                tx={tx}
-            />
-          )
-        }
-      </div>
+      <div>Your owned Land Plots: { landBalance? landBalance.toString() : '...' }</div>
+      { landIndexes.length ? 
+        (<table>
+          <thead><tr><th style={styth}>Land ID</th><th style={styth}>Land Code</th><th style={styth}>Seed</th></tr></thead>
+          <tbody>{ landIndexes.map(landIdx =>
+              (<LandInfo key={'land-'+landIdx}
+                  landIdx={landIdx}
+                  address={address}
+                  readContracts={readContracts}
+                  writeContracts={writeContracts}
+                  tx={tx}
+              />)
+           ) }</tbody>
+        </table>) : '' }
     </Panel></Collapse>
   )
 }
