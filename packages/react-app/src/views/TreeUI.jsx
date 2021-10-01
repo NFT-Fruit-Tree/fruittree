@@ -639,13 +639,28 @@ function TreeMapRow({
   rowIdx,
 }) {
  // return (<div>{rowIdx} {gameStateRow.length}</div>);
+  const getTreeStyle = (species, treeState) => {
+    console.log('species..........', species);
+    const posX = SpeciesBabyImgOffsets[species2name(species)][0] * 96;
+    const stageOffY = (treeState - 1) * 128; // only applicable if not SEED and DEAD
+    const posY = SpeciesBabyImgOffsets[species2name(species)][1] * 128 - stageOffY;
+    const treeStyle = {objectFit: 'none', objectPosition: `-${posX}px -${posY}px`, width: 96, height: 128, position: 'absolute', top: -64};
+    return treeStyle;
+  };
+  const normalSeedId = (seedIdObj) => seedIdObj ? (seedIdObj.toString() == MAX_UINT256 ? null : seedIdObj.toNumber()) : null;
   return (
-    <div style={{width:3200}} >
-      { gameStateRow.map((data, colIdx) => (<div key={`foo-${rowIdx}-${colIdx}`} style={{display:'inline-block', border: '1px solid black', width:100, height: 100}}>
-          <div>id { data.seedId.toString() === MAX_UINT256 ? 'seedless' : data.seedId.toNumber() }</div>
-          <div>species { data.seedSpecies.toString() }</div>
-          <div>state { data.seedState.toString() }</div>
-         </div>)) }
+    <div style={{width:3200, height:94 /* XXX */}} >
+      { gameStateRow.map((data, colIdx) =>
+          (<div key={`foo-${rowIdx}-${colIdx}`} style={{display:'inline-block', /*border: '1px solid black', width:100, height: 100,*/ position: 'relative'}}>
+            { (!data.seedState || normalSeedId(data.seedId) === null) ? '' : (<img src={fruitTreePng} style={getTreeStyle(data.seedSpecies, data.seedState)} />) }
+            <span className="gnd gnd-tilled-in-grass">{/*<span id={"tree-" + (data.seedId }></span>*/}</span>
+            <div style={{position: 'absolute', top: 0, left: 0, opacity: 0.5}}>
+              <div>id { normalSeedId(data.seedId)}</div>
+              <div>species { data.seedSpecies.toString() }</div>
+              <div>state { data.seedState.toString() }</div>
+            </div>
+           </div>))
+       }
     </div>
   )
 }
