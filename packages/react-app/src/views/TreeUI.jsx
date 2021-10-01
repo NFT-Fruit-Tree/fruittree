@@ -572,6 +572,15 @@ function TreeBuilder({
     </Panel></Collapse>
   )
 }
+function fakeGameState(gameState) {
+  if (!gameState) return null;
+  return gameState.map(data => {
+    let newData = { ...data };
+    newData.seedId = gameState[0].seedId;
+    newData.seedState = Math.floor(Math.random() * 6);
+    return newData;
+  });
+}
 function TreeMap2({
   address,
   mainnetProvider,
@@ -581,7 +590,7 @@ function TreeMap2({
   readContracts,
   writeContracts,
 }) {
-  const gameState = useContractReader(readContracts, "Seed", "gameState");
+  const gameState = fakeGameState(useContractReader(readContracts, "Seed", "gameState"));
   console.log('............................. game state ', gameState);
   const stateRowCount = gameState ? Math.floor(gameState.length / 32) : 0;
   const stateRowsIndexes = [...Array(stateRowCount).keys()];
