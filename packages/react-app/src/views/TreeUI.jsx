@@ -43,20 +43,7 @@ function mass2stage(m) {
   }
   return TreeStages[Math.min(4, Math.floor(m / MassPerStage))];
 }
-const SpeciesNames = ['Lingo', 'Mican', 'Nasu', 'Abo', 'Cheri', 'Ume', 'Banana', 'Coco'];
-const SpeciesBabyImgOffsets = { 
-    // [x * 96, y * 128]
-    'Lingo': [0, 3],
-    'Mican': [1, 3],
-    'Nasu':  [4, 3],
-    'Abo':   [6, 3],
-    'Cheri': [3, 3],
-    'Ume':   [7, 3],
-    'Banana':[1, 11],
-    'Coco':  [0, 11],
-    '_ERROR_': [0, 0],
-};
-
+const SpeciesNames = ['Lingo', 'Mican', 'Nasu', 'Abo', 'Cheri', 'Ume', 'Nana', 'Coco'];
 function species2name(speciesIdx) {
   return SpeciesNames[speciesIdx];
 }
@@ -574,10 +561,17 @@ function TreeBuilder({
 }
 function fakeGameState(gameState) {
   if (!gameState) return null;
+  console.log(gameState[0]);
   return gameState.map(data => {
     let newData = { ...data };
+    newData.seedSpecies = Math.floor(Math.random() * 8);
     newData.seedId = gameState[0].seedId;
-    newData.seedState = Math.floor(Math.random() * 6);
+    newData.seedState = Math.floor(1 + Math.random() * 5);
+    // TODO display .landType somehow
+    // TODO unharvestedFruits.toNumber()
+    newData.fakeFruits = newData.seedState != 4 ? 0 : Math.floor(Math.random() * 10); // TODO what's a reasonable count range
+    newData.fakeFruits += 1;
+    newData.fakeFruitColor = Math.floor(Math.random() * 4);
     return newData;
   });
 }
@@ -607,29 +601,58 @@ function TreeMap2({
     </Panel></Collapse>
   )
 }
+const SpeciesBabyImgOffsets = { 
+    // [x * 96, y * 128]
+    'Lingo': [0, 3],
+    'Mican': [1, 3],
+    'Nasu':  [4, 3],
+    'Abo':   [6, 3],
+    'Cheri': [3, 3],
+    'Ume':   [7, 3],
+    'Nana':[1, 11],
+    'Coco':  [0, 11],
+    '_ERROR_': [0, 0],
+};
+const FruitRow1 = 16; // row of apple tree
+// points to smallest fruit, first color
+const SpeciesFruitImgOffsets = {
+    'Lingo': [0, 2 + FruitRow1],
+    'Mican': [5, 2 + FruitRow1],
+    'Nasu':  [3, 5 + FruitRow1],
+    'Abo':   [7, 5 + FruitRow1],
+    'Cheri': [2, 5 + FruitRow1],
+    'Ume':   [8, 5 + FruitRow1],
+    'Nana':  [3, 8 + FruitRow1],
+    'Coco':  [2, 8 + FruitRow1],
+    '_ERROR_': [0, 0],
+};
+function calcTreePos(species, treeState, fruitCount) {
+    // XXX quick hack, all dead trees look the same
+    if (TreeStages[treeState] == 'DEAD') { 
+      return '0 -896px';
+    }
+    if (TreeStages[treeState] == 'ADULT' && fruitCount > 0) {
+      return `-${SpeciesFruitImgOffsets[species2name(species)][0] * 96}px -${SpeciesFruitImgOffsets[species2name(species)][1] * 128}px`;
+    }
+    const posX = SpeciesBabyImgOffsets[species2name(species)][0] * 96;
+    const stageOffY = (treeState - 1) * 128; // only applicable if not SEED and DEAD
+    const posY = SpeciesBabyImgOffsets[species2name(species)][1] * 128 - stageOffY;
+    return `-${posX}px -${posY}px`;
+}
 function TreeMapRow({
   gameStateRow,
   rowIdx,
 }) {
  // return (<div>{rowIdx} {gameStateRow.length}</div>);
-  const getTreeStyle = (species, treeState) => {
-    // XXX quick hack, all dead trees look the same
-    if (TreeStages[treeState] == 'DEAD') { 
-      return {objectFit: 'none', objectPosition: '0 -896px', width: 96, height: 128, position: 'absolute', top: -64};
-    }
-    console.log('species..........', species);
-    const posX = SpeciesBabyImgOffsets[species2name(species)][0] * 96;
-    const stageOffY = (treeState - 1) * 128; // only applicable if not SEED and DEAD
-    const posY = SpeciesBabyImgOffsets[species2name(species)][1] * 128 - stageOffY;
-    const treeStyle = {objectFit: 'none', objectPosition: `-${posX}px -${posY}px`, width: 96, height: 128, position: 'absolute', top: -64};
-    return treeStyle;
+  const getTreeStyle = (species, treeState, fruitCount) => {
+    return {objectFit: 'none', objectPosition: calcTreePos(species, treeState, fruitCount), width: 96, height: 128, position: 'absolute', top: -64};
   };
   const normalSeedId = (seedIdObj) => seedIdObj ? (seedIdObj.toString() == MAX_UINT256 ? null : seedIdObj.toNumber()) : null;
   return (
     <div style={{width:3200, height:94 /* XXX */}} >
       { gameStateRow.map((data, colIdx) =>
           (<div key={`foo-${rowIdx}-${colIdx}`} style={{display:'inline-block', /*border: '1px solid black', width:100, height: 100,*/ position: 'relative'}}>
-            { (!data.seedState || normalSeedId(data.seedId) === null) ? '' : (<img src={fruitTreePng} style={getTreeStyle(data.seedSpecies, data.seedState)} />) }
+            { (!data.seedState || normalSeedId(data.seedId) === null) ? '' : (<img src={fruitTreePng} style={getTreeStyle(data.seedSpecies, data.seedState, data.fakeFruits)} />) }
             <span className="gnd gnd-tilled-in-grass">{/*<span id={"tree-" + (data.seedId }></span>*/}</span>
             <div style={{position: 'absolute', top: 0, left: 0, opacity: 0.5}}>
               <div>id { normalSeedId(data.seedId)}</div>
