@@ -20,10 +20,13 @@ contract Seed is ERC721, ERC721Enumerable {
     Counters.Counter private _tokenIdCounter;
 
     uint8 constant mintLimitPerBlock = 8;
-    uint8 constant baseGrowthPerHourFactor = 100;
+    uint8 constant baseGrowthPerHourPercentage = 100;
     uint8 constant massPerStage = 50;
     uint8 constant minimumAdultMass = uint8(TreeState.ADULT) * massPerStage; // mass needed to become adult
+    uint8 constant baseFruitGrowthPerHourPercentage = 40;
     uint8 constant wholeFruitMass = 10; // can harvest 1 FRUIT for every 10 mass
+    uint16 constant baseWaterUsePercentage = 400;
+    uint16 constant baseFertilizerUsePercentage = 400;
     int16 constant driedDeath = -500; // level at which the tree will die from the lack of water
     // TODO: What's the real value of a seed ?
     uint256 constant seedPrice = 10 ** 17;
@@ -176,7 +179,6 @@ contract Seed is ERC721, ERC721Enumerable {
         _safeMint(msg.sender, _id);
         _tokenIdCounter.increment();
         // Initialise the seed's traits
-        // TODO: calculate the different traits using the species trait values and its dna
         treeData[_id].dna = uint32(_dna);
     }
 
@@ -280,7 +282,6 @@ contract Seed is ERC721, ERC721Enumerable {
     function burn(uint256 _seedId) external {
         // Check if the token exists and if the sender owns the seed
         if (ownerOf(_seedId) != msg.sender) revert UnauthorizedError();
-        // TODO: Should we check the tree state ? 
         delete treeData[_seedId];
         _burn(_seedId);
     }
@@ -384,14 +385,15 @@ contract Seed is ERC721, ERC721Enumerable {
     
     // Calculate the tree's water level
     function _waterLevel(TreeData storage _seed) internal view returns (int256) {
-        uint256 _treeWaterUseFactor = uint256(_waterUseFactor(_seed));
-        return 100 - int256(_treeWaterUseFactor * (block.timestamp - _seed.lastWateredAt));
+        uint256 _treeWaterUsePercentage = _waterUsePercentage(_seed); // In % * 100 / h
+        uint256 _timeDifferenceInSeconds = block.timestamp - _seed.lastWateredAt;
+        return 100 - int256(_timeDifferenceInSeconds * _treeWaterUsePercentage / (10000 * 3600));
     }
     
     // Calculate the tree's mass
     function _mass(TreeData storage _seed) internal view returns (uint256) {
         // Calculate the time when the tree runs of water
-        uint256 _hydratedTil = _seed.lastWateredAt + 100 / uint256(_waterUseFactor(_seed)) * 3600;
+        uint256 _hydratedTil = _seed.lastWateredAt + 100 * 10000 / uint256(_waterUsePercentage(_seed)) * 3600;
         // Did the tree ran out of water ?
         uint256 _hydratedTilNow = Math.min(block.timestamp, _hydratedTil);
         // Calculate the new tree mass from the previously calculated mass and calculated the new one
@@ -401,13 +403,13 @@ contract Seed is ERC721, ERC721Enumerable {
     // Calculate the tree's fruit mass
     function _fruitMass(TreeData storage _seed) internal view returns (uint256) {
         // Calculate the time when the tree will run out of fertilizer
-        uint256 _fertilizedTil = _seed.lastFertilizedAt + fertilizerAmount / uint256(_fertilizerUseFactor(_seed));
+        uint256 _fertilizedTil = _seed.lastFertilizedAt + fertilizerAmount * 100 / uint256(_fertilizerUsePercentage(_seed)) * 3600;
         // Did the tree ran out of fertilizer before now ?
         uint256 _fertilizedTilNow = Math.min(block.timestamp, _fertilizedTil);
         // Did the tree become adult since the last snapshot ?
         uint256 _lastSnapshotedOrAdultAt = Math.max(_seed.lastSnapshotedAt, _seed.adultAt);
         // Calculate the fruit mass by adding the previously unharvested fruits and calculating the newly produced mass
-        return _seed.lastFruitMass + uint256(_fruitGrowthFactor(_seed)) * (_fertilizedTilNow - _lastSnapshotedOrAdultAt) / 3600;
+        return _seed.lastFruitMass + uint256(_fruitGrowthPercentage(_seed)) * (_fertilizedTilNow - _lastSnapshotedOrAdultAt) / (100 *3600);
     }
 
     // Check if the seed is planted to protect against landId = 0 default value that is a valid Land value (0,0)
@@ -464,9 +466,9 @@ contract Seed is ERC721, ERC721Enumerable {
 
     /* --- Seed trait functions --- */
 
-    function traits(uint256 _seedId) external view returns (SeedSpecies species, uint16 growthPercentage, uint8 waterUseFactor, uint8 fertilizerUseFactor, uint8 fruitGrowthFactor) {
+    function traits(uint256 _seedId) external view returns (SeedSpecies species, uint16 growthPercentage, uint16 waterUsePercentage, uint16 fertilizerUsePercentage, uint8 fruitGrowthPercentage) {
         TreeData storage _seed = treeData[_seedId];
-        return (_species(_seed), _growthPercentage(_seed), _waterUseFactor(_seed), _fertilizerUseFactor(_seed), _fruitGrowthFactor(_seed));
+        return (_species(_seed), _growthPercentage(_seed), _waterUsePercentage(_seed), _fertilizerUsePercentage(_seed), _fruitGrowthPercentage(_seed));
     }
 
     /// Get the seed's dna
@@ -492,11 +494,11 @@ contract Seed is ERC721, ERC721Enumerable {
         return SeedSpecies(_traitFromDNA(_seed.dna, _speciesLastBitPosition, _speciesMask));
     }
 
-    // Calculate the tree's growth factor %. Its value can range from 100 to 341% (341.25 in reality but we don't do floating point nunbers)
+    // Calculate the tree's growth %. Its value can range from 100 to 341% (341.25 in reality but we don't do floating point nunbers)
     function _growthPercentage(TreeData storage _seed) internal view returns (uint16) {
-        // Calculate the seed own growth factor from its dna. Its value will range between 100 and (2 ** 4 - 1) * 5 + 100 = 175%
+        // Calculate the seed own growth % from its dna. Its value will range between 100 and (2 ** 4 - 1) * 5 + 100 = 175%
         uint256 _seedGrowthPercentage = 100 + _traitFromDNA(_seed.dna, _treeGrowthFactorLastBitPosition, _treeGrowthFactorMask) * 5;
-        // Calculate the seed's species bonus factor depending on its rarity. 150% for RARE, 130% for MEDIUM
+        // Calculate the seed's species bonus % depending on its rarity. 150% for RARE, 130% for MEDIUM
         SeedSpecies _seedSpecies = _species(_seed);
         SeedSpeciesRarity _seedSpeciesRarity = _speciesRarity(_seedSpecies);
         uint256 _speciesGrowthPercentage = _seedSpeciesRarity == SeedSpeciesRarity.RARE
@@ -504,24 +506,40 @@ contract Seed is ERC721, ERC721Enumerable {
             : _seedSpeciesRarity == SeedSpeciesRarity.MEDIUM
             ? 120
             : 100;
-        // Calculate the land growth factor if planted. If its type is the same as the seed's species, its value will be 130%. 
+        // Calculate the land growth % if planted. If its type is the same as the seed's species, its value will be 130%. 
         uint256 _landGrowthPercentage = _isPlanted(_seed) && land.landTypes(_seed.landId) == _seedSpecies ? 130 : 100;
-        return uint16(baseGrowthPerHourFactor * _seedGrowthPercentage * _speciesGrowthPercentage * _landGrowthPercentage / 10 ** 6);
+        return uint16(baseGrowthPerHourPercentage * _seedGrowthPercentage * _speciesGrowthPercentage * _landGrowthPercentage / 10 ** 6);
     }
 
-    // Calculate the tree's water use factor 
-    function _waterUseFactor(TreeData storage _seed) internal view returns (uint8) {
-        return _traitFromDNA(_seed.dna, _treeWaterUseFactorLastBitPosition, _treeWaterUseFactorMask);
+    // Calculate the tree's water use %. Its value ranges from 400 to 435 (4.35% * 100)!
+    function _waterUsePercentage(TreeData storage _seed) internal view returns (uint16) {
+        // Calculate the seed own water use % from its dna. Its value can range from 0 to (2 ** 3 - 1) * 5 = 35%.
+        uint16 _seedWaterUsePercentage = _traitFromDNA(_seed.dna, _treeWaterUseFactorLastBitPosition, _treeWaterUseFactorMask) * 5;
+        return baseWaterUsePercentage + _seedWaterUsePercentage;
     }
 
-    // Calculate the tree's fertilizer use factor
-    function _fertilizerUseFactor(TreeData storage _seed) internal view returns (uint8) {
-        return _traitFromDNA(_seed.dna, _treeFertilizerUseFactorLastBitPosition, _treeFertilizerUseFactorMask);
+    // Calculate the tree's fertilizer use %. Similar to {_waterUsePercentage}
+    function _fertilizerUsePercentage(TreeData storage _seed) internal view returns (uint16) {
+        // Calculate the seed own fertilizer use % from its dna. Its value can range from 0 to (2 ** 3 - 1) * 5 = 35%.
+        uint16 _seedFertilizerUsePercentage = _traitFromDNA(_seed.dna, _treeFertilizerUseFactorLastBitPosition, _treeFertilizerUseFactorMask) * 5;
+        return baseFertilizerUsePercentage + _seedFertilizerUsePercentage;
     }
 
-    // Calculate the tree's fruit growth factor
-    function _fruitGrowthFactor(TreeData storage _seed) internal view returns (uint8) {
-        return _traitFromDNA(_seed.dna, _fruitGrowthFactorLastBitPosition, _fruitGrowthFactorMask);
+    // Calculate the tree's fruit growth %. Similar to {_growthPercentage}. Its value ranges from 40 to 136% (136.5%)
+    function _fruitGrowthPercentage(TreeData storage _seed) internal view returns (uint8) {
+        // Calculate the seed own fruit growth % from its dna. Its value will range between 100 and (2 ** 4 - 1) * 5 + 100 = 175%
+        uint256 _seedFruitGrowthPercentage = 100 + _traitFromDNA(_seed.dna, _fruitGrowthFactorLastBitPosition, _fruitGrowthFactorMask) * 5;
+        // Calculate the seed's species bonus % depending on its rarity. 150% for RARE, 130% for MEDIUM
+        SeedSpecies _seedSpecies = _species(_seed);
+        SeedSpeciesRarity _seedSpeciesRarity = _speciesRarity(_seedSpecies);
+        uint256 _speciesFruitGrowthPercentage = _seedSpeciesRarity == SeedSpeciesRarity.RARE
+            ? 150
+            : _seedSpeciesRarity == SeedSpeciesRarity.MEDIUM
+            ? 120
+            : 100;
+        // Calculate the land fruit growth % if planted. If its type is the same as the seed's species, its value will be 130%. 
+        uint256 _landFruitGrowthPercentage = _isPlanted(_seed) && land.landTypes(_seed.landId) == _seedSpecies ? 130 : 100;
+        return uint8(baseFruitGrowthPerHourPercentage * _seedFruitGrowthPercentage * _speciesFruitGrowthPercentage * _landFruitGrowthPercentage / 10 ** 6);
     }
 
     /* Still needed ?
