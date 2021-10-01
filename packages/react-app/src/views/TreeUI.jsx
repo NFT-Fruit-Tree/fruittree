@@ -6,6 +6,10 @@ import { Address, Balance } from "../components";
 
 // const fruitTreePng = require('../lpc-fruit-trees/fruit-trees.png');
 import fruitTreePng from '../lpc-fruit-trees/fruit-trees.png';
+import iconWater from '../foundicons/water.png';
+import iconFire from '../foundicons/fire.png';
+import iconBeaker from '../foundicons/beaker.png';
+import iconScythe from '../foundicons/scythe.png';
 
 // stuff we might need from App.jsx
 // import { Transactor } from "./helpers";
@@ -105,7 +109,9 @@ function TreeCardInner({
   const posX = SpeciesBabyImgOffsets[speciesName][0] * 96;
   const stageOffY = (treeState - 1) * 128; // only applicable if not SEED and DEAD
   const posY = SpeciesBabyImgOffsets[speciesName][1] * 128 - stageOffY;
-  const treeStyle = {objectFit: 'none', objectPosition: `-${posX}px -${posY}px`, width: 96, height: 128, position: 'absolute', top: -64};
+  const deadStyle = {objectFit: 'none', objectPosition: '0 -896px', width: 96, height: 128, position: 'absolute', top: -64};
+  const treeStyle = treeState ? (TreeStages[treeState] == 'DEAD' ? deadStyle :
+                                 {objectFit: 'none', objectPosition: `-${posX}px -${posY}px`, width: 96, height: 128, position: 'absolute', top: -64}) : {};
   const mass = useContractReader(readContracts, "Seed", "mass", [seedId]);
   const waterLevel = useContractReader(readContracts, "Seed", "waterLevel", [seedId]);
   const fruitMass = useContractReader(readContracts, "Seed", "fruitMass", [seedId]);
@@ -128,7 +134,7 @@ function TreeCardInner({
           <div> Mass: { mass ? mass.toNumber() : 0 }</div>
           <div> Water Level: { waterLevel ? waterLevel.toString() : 'N/A' } </div>
           <div> Stage from mass: { mass2stage(mass ? mass.toNumber() : 0) }</div>
-          <div> treeState: { treeState }</div>
+          <div> treeState: { TreeStages[treeState] }</div>
 
           <div> Fruit: { fruitCount } </div>
           <Button
@@ -153,7 +159,7 @@ function TreeCardInner({
               console.log(await result);
             }}
           >
-              Water!
+              Water! <img src={iconWater} width='20' />
           </Button>
           <Button
             style={{ marginTop: 8 }}
@@ -201,7 +207,7 @@ function TreeCardInner({
               console.log(await result);
             }}
            >
-              Fertilize !
+              Fertilize !  <img src={iconBeaker} width='20' />
           </Button>
           <Button
             style={{ marginTop: 8 }}
@@ -226,6 +232,7 @@ function TreeCardInner({
             }}
            >
               Harvest !
+              <img src={iconScythe} width='20' />
           </Button>
           <Button
             style={{ marginTop: 8 }}
@@ -249,7 +256,7 @@ function TreeCardInner({
               console.log(await result);
             }}
            >
-              Burn !
+              Burn ! <img src={iconFire} width='20' />
           </Button>
           <Divider />
     </Card>
@@ -625,7 +632,7 @@ function TreeMap2({
 
   return (
     <Collapse><Panel header="Tree Map" >
-      <div style={{overflow: 'scroll scroll', height: 600}}>
+      <div style={{overflow: 'scroll scroll', height: 600, paddingTop: 100}}>
         { gameState ? stateRowsIndexes.map(rowIdx => (<TreeMapRow key={'treemaprow-'+rowIdx}
                 gameStateRow={stateRows[rowIdx]}
                 rowIdx={rowIdx}
@@ -640,6 +647,10 @@ function TreeMapRow({
 }) {
  // return (<div>{rowIdx} {gameStateRow.length}</div>);
   const getTreeStyle = (species, treeState) => {
+    // XXX quick hack, all dead trees look the same
+    if (TreeStages[treeState] == 'DEAD') { 
+      return {objectFit: 'none', objectPosition: '0 -896px', width: 96, height: 128, position: 'absolute', top: -64};
+    }
     console.log('species..........', species);
     const posX = SpeciesBabyImgOffsets[species2name(species)][0] * 96;
     const stageOffY = (treeState - 1) * 128; // only applicable if not SEED and DEAD
